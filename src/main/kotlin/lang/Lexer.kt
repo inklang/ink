@@ -7,6 +7,7 @@ private class Lexer(val source: String) {
     private var cursor = 0;
     private var line = 1;
     private var column = 0;
+    private var interpolationDepth = 0;  // Track nested interpolations
 
     companion object {
         // Tokens that can end a statement (for ASI)
@@ -62,7 +63,14 @@ private class Lexer(val source: String) {
                 '(' -> addToken(TokenType.L_PAREN)
                 ')' -> addToken(TokenType.R_PAREN)
                 '{' -> addToken(TokenType.L_BRACE)
-                '}' -> addToken(TokenType.R_BRACE)
+                '}' -> {
+                    // Check if this closes an interpolation
+                    if (interpolationDepth > 0) {
+                        handleInterpolationEnd()
+                    } else {
+                        addToken(TokenType.R_BRACE)
+                    }
+                }
                 '[' -> addToken(TokenType.L_SQUARE)
                 ']' -> addToken(TokenType.R_SQUARE)
                 ',' -> addToken(TokenType.COMMA)
@@ -130,8 +138,26 @@ private class Lexer(val source: String) {
     }
 
     private fun string() {
-        // Scan until closing quote
+        // Scan until closing quote or interpolation start
         while (peek() != '"' && !isAtEnd()) {
+            // Check for interpolation start ${
+            if (peek() == '$' && peekNext() == '{') {
+                // Emit the string part we've accumulated so far
+                if (cursor > start + 1) {
+                    // We have content before the ${
+                    val value = source.substring(start + 1, cursor)
+                    // Create a synthetic string token (without quotes in lexeme, but we store the actual content)
+                    tokens.add(Token(TokenType.KW_STRING, "\"$value\"", line, column - value.length))
+                }
+
+                // Emit INTERPOLATION_START
+                advance() // consume $
+                advance() // consume {
+                tokens.add(Token(TokenType.INTERPOLATION_START, "\${", line, column - 1))
+                interpolationDepth++
+                return  // Let normal tokenization handle the expression inside
+            }
+
             if (peek() == '\n') {
                 line++
                 column = 0
@@ -157,6 +183,75 @@ private class Lexer(val source: String) {
         // Trim the surrounding quotes
         val value = source.substring(start + 1, cursor - 1)
         addToken(TokenType.KW_STRING)
+    }
+
+    private fun handleInterpolationEnd() {
+        // This is called when we see } and interpolationDepth > 0
+        advance() // consume }
+        tokens.add(Token(TokenType.INTERPOLATION_END, "}", line, column - 1))
+        interpolationDepth--
+
+        // After closing interpolation, we might have more string content
+        // Check if the next character is a quote (end of string) or more content
+        if (peek() == '"') {
+            // End of the interpolated string
+            advance() // consume closing quote
+            // The string is complete - no more parts
+        } else {
+            // Continue scanning string content after the interpolation
+            // We need to scan until the next ${ or closing "
+            scanStringTail()
+        }
+    }
+
+    private fun scanStringTail() {
+        // Continue scanning string content after an interpolation
+        // This is like string() but we're already inside the string
+        start = cursor  // Start at current position (after the closing })
+
+        while (peek() != '"' && !isAtEnd()) {
+            // Check for another interpolation
+            if (peek() == '$' && peekNext() == '{') {
+                // Emit the string part we've accumulated
+                if (cursor > start) {
+                    val value = source.substring(start, cursor)
+                    tokens.add(Token(TokenType.KW_STRING, "\"$value\"", line, column - value.length))
+                }
+
+                // Emit INTERPOLATION_START
+                advance() // consume $
+                advance() // consume {
+                tokens.add(Token(TokenType.INTERPOLATION_START, "\${", line, column - 1))
+                interpolationDepth++
+                return
+            }
+
+            if (peek() == '\n') {
+                line++
+                column = 0
+            }
+            // Handle escape sequences
+            if (peek() == '\\') {
+                advance() // consume backslash
+                if (!isAtEnd()) advance() // consume escaped char
+            } else {
+                advance()
+            }
+        }
+
+        if (isAtEnd()) {
+            // Unterminated string
+            return
+        }
+
+        // Closing quote
+        advance()
+
+        // Emit the final string part (may be empty)
+        if (cursor > start + 1) {
+            val value = source.substring(start, cursor - 1)  // cursor - 1 to exclude closing quote
+            tokens.add(Token(TokenType.KW_STRING, "\"$value\"", line, column - value.length))
+        }
     }
 
     private fun identifier() {

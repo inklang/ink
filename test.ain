@@ -1,43 +1,10 @@
-// Test ASI (Automatic Semicolon Insertion) and Classes
-// No semicolons needed!
-
 class Point {
-    fn init(x, y) {
-        self.x = x
-        self.y = y
-    }
-
-    fn translate(dx, dy) {
-        self.x = self.x + dx
-        self.y = self.y + dy
-    }
-
-    fn toString() {
-        return "Point(" + self.x + ", " + self.y + ")"
-    }
+  fn init(x, y) {
+    self.x = x
+    self.y = y
+  }
 }
 
-// Create instances
-let p1 = Point(3, 4)
-let p2 = Point(10, 20)
-
-// Call methods
-print("Created points:")
-print(p1.toString())
-print(p2.toString())
-
-// Modify and print
-p1.translate(1, 1)
-print("After translate:")
-print(p1.toString())
-
-// Access fields directly
-print("p1.x =", p1.x)
-print("p1.y =", p1.y)
-
-// Type checking
-if (p1 is Point) {
-    print("p1 is a Point!")
-}
-
-print("Done!")
+let p = Point(2,3)
+p.x = 3
+print(p.x)

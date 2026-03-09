@@ -11,12 +11,21 @@ data class ClassInfo(
     val methods: Map<String, Int>  // methodName -> function index in chunk.functions
 )
 
+/**
+ * Stores information about a function's default parameter values.
+ * Each element is either null (no default) or a ChunkIndex pointing to a chunk that computes the default.
+ */
+data class FunctionDefaults(
+    val defaultChunks: List<Int?>  // Index into chunk.functions for each param's default chunk, or null
+)
+
 class Chunk {
     val code = mutableListOf<Int>()
     val constants = mutableListOf<Value>()
     val strings = mutableListOf<String>()
     val functions = mutableListOf<Chunk>()
     val classes = mutableListOf<ClassInfo>()
+    val functionDefaults = mutableListOf<FunctionDefaults>()  // Parallel to functions - defaults for each function
 
     fun addConstant(value: Value): Int {
         constants.add(value)

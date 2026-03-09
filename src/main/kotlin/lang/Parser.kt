@@ -107,6 +107,8 @@ class Parser(private val tokens: List<Token>) {
         val name = consume(TokenType.IDENTIFIER, "Expected function name")
         consume(TokenType.L_PAREN, "Expected '('")
         val params = mutableListOf<Param>()
+        var hasSeenDefaultParam = false
+
         if (!check(TokenType.R_PAREN)) {
             do {
                 val paramName = consume(TokenType.IDENTIFIER, "Expected parameter name")
@@ -114,7 +116,23 @@ class Parser(private val tokens: List<Token>) {
                     TokenType.IDENTIFIER,
                     "Expected type"
                 ) else null
-                params.add(Param(paramName, paramType))
+
+                // Check for default value
+                val defaultValue = if (match(TokenType.ASSIGN)) {
+                    hasSeenDefaultParam = true
+                    parseExpression(0)
+                } else {
+                    // No default value - validate that we haven't seen a default param yet
+                    if (hasSeenDefaultParam) {
+                        throw error(
+                            previous(),
+                            "Non-default parameter '${paramName.lexeme}' cannot follow default parameter"
+                        )
+                    }
+                    null
+                }
+
+                params.add(Param(paramName, paramType, defaultValue))
             } while (match(TokenType.COMMA))
         }
         consume(TokenType.R_PAREN, "Expected ')'")
@@ -281,7 +299,18 @@ class Parser(private val tokens: List<Token>) {
             TokenType.KW_STRING -> {
                 // String literal (lexeme includes quotes)
                 val value = token.lexeme.substring(1, token.lexeme.length - 1)
-                Expr.LiteralExpr(Value.String(value))
+                // Check if this is the start of an interpolated string
+                if (check(TokenType.INTERPOLATION_START)) {
+                    advance()  // consume INTERPOLATION_START
+                    parseInterpolatedString(Expr.LiteralExpr(Value.String(value)))
+                } else {
+                    Expr.LiteralExpr(Value.String(value))
+                }
+            }
+            TokenType.INTERPOLATION_START -> {
+                // Interpolation starting at beginning of string (empty string prefix)
+                // The INTERPOLATION_START token has already been consumed by advance() in parsePrefix
+                parseInterpolatedString(Expr.LiteralExpr(Value.String("")))
             }
             TokenType.MINUS -> Expr.UnaryExpr(token, parseExpression(90))
             TokenType.BANG -> Expr.UnaryExpr(token, parseExpression(90))
@@ -304,6 +333,57 @@ class Parser(private val tokens: List<Token>) {
                 "Expected expression but found ${token.type} ('${token.lexeme}')"
             )
         }
+    }
+
+    /**
+     * Parse an interpolated string and desugar it to concatenation operations.
+     * Example: "Hi ${name}!" desugars to "Hi " + name + "!"
+     *
+     * IMPORTANT: This method assumes the caller has already consumed the INTERPOLATION_START token.
+     *
+     * @param firstPart The initial string literal (or empty string if interpolation starts at beginning)
+     * @return A BinaryExpr chain representing the concatenation
+     */
+    private fun parseInterpolatedString(firstPart: Expr): Expr {
+        var result = firstPart
+        val plusToken = Token(TokenType.PLUS, "+", 0, 0)  // Synthetic token for concatenation
+
+        // We're already past the INTERPOLATION_START - parse the expression
+        while (true) {
+            // Parse the expression inside the interpolation
+            val expr = parseExpression(0)
+
+            // Expect INTERPOLATION_END
+            consume(TokenType.INTERPOLATION_END, "Expected '}' after interpolated expression")
+
+            // Concatenate: result + expr
+            result = Expr.BinaryExpr(result, plusToken, expr)
+
+            // Check if there's more string content or another interpolation
+            if (check(TokenType.KW_STRING)) {
+                // There's string content after the interpolation
+                val stringToken = advance()
+                val stringValue = stringToken.lexeme.substring(1, stringToken.lexeme.length - 1)
+                result = Expr.BinaryExpr(result, plusToken, Expr.LiteralExpr(Value.String(stringValue)))
+
+                // Check if there's another interpolation
+                if (check(TokenType.INTERPOLATION_START)) {
+                    advance()  // consume INTERPOLATION_START
+                    // Continue to parse the next interpolation
+                } else {
+                    break
+                }
+            } else if (check(TokenType.INTERPOLATION_START)) {
+                // Another interpolation immediately after this one
+                advance()  // consume INTERPOLATION_START
+                continue
+            } else {
+                // End of interpolated string
+                break
+            }
+        }
+
+        return result
     }
 
     // --- Helpers ---

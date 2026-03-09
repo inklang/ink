@@ -52,7 +52,11 @@ sealed class Value {
         override fun toString() = "null"
     }
 
-    data class Function(val chunk: Chunk) : Value()
+    data class Function(
+        val chunk: Chunk,
+        val arity: kotlin.Int = 0,  // Number of required parameters (without defaults)
+        val defaults: FunctionDefaults? = null  // Default value chunk indices
+    ) : Value()
     data class NativeFunction(val fn: (kotlin.collections.List<Value>) -> Value) : Value()
 
     /** A method bound to an instance - the instance is prepended as the first argument on CALL */

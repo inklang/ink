@@ -43,7 +43,16 @@ class VM {
 
                 OpCode.MOVE -> frame.regs[dst] = frame.regs[src1]
 
-                OpCode.ADD -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a + b }
+                OpCode.ADD -> {
+                    val a = frame.regs[src1]!!
+                    val b = frame.regs[src2]!!
+                    // String concatenation if either operand is a string
+                    if (a is Value.String || b is Value.String) {
+                        frame.regs[dst] = Value.String(a.toString() + b.toString())
+                    } else {
+                        frame.regs[dst] = binop(a, b) { x, y -> x + y }
+                    }
+                }
                 OpCode.SUB -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a - b }
                 OpCode.MUL -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a * b }
                 OpCode.DIV -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a / b }
@@ -61,20 +70,33 @@ class VM {
                 OpCode.JUMP          -> frame.ip = imm
                 OpCode.JUMP_IF_FALSE -> if (isFalsy(frame.regs[src1]!!)) frame.ip = imm
 
-                OpCode.LOAD_FUNC -> frame.regs[dst] = Function(frame.chunk.functions[imm])
+                OpCode.LOAD_FUNC -> {
+                    val funcChunk = frame.chunk.functions[imm]
+                    val defaults = if (imm < frame.chunk.functionDefaults.size) {
+                        frame.chunk.functionDefaults[imm]
+                    } else {
+                        null
+                    }
+                    // Count required params (those without defaults)
+                    val requiredArity: kotlin.Int = defaults?.defaultChunks?.count { it == null } ?: 0
+                    frame.regs[dst] = Function(funcChunk, requiredArity, defaults)
+                }
                 OpCode.CALL -> {
                     // Read args from subsequent ARG instructions
-                    val args = (0 until imm).map { i ->
+                    val passedArgCount = imm
+                    val args = (0 until passedArgCount).map { i ->
                         val argWord = frame.chunk.code[frame.ip + i]
                         val argSrc1 = (argWord shr 12) and 0x0F
                         frame.regs[argSrc1] ?: error("Null arg at reg $argSrc1")
                     }
-                    frame.ip += imm  // Skip the ARG instructions
+                    frame.ip += passedArgCount  // Skip the ARG instructions
                     when (val func = frame.regs[src1]) {
                         is Value.Function -> {
+                            val totalParams = func.defaults?.defaultChunks?.size ?: passedArgCount
+                            val finalArgs = fillDefaultArgs(args, func, totalParams, frame, frames)
                             val newFrame = CallFrame(func.chunk)
                             newFrame.returnDst = dst  // Store where to put return value
-                            args.forEachIndexed { i, v -> newFrame.regs[i] = v }
+                            finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
                             frames.addLast(newFrame)
                         }
                         is Value.NativeFunction -> {
@@ -85,15 +107,42 @@ class VM {
                             val boundArgs = listOf(func.instance) + args
                             when (val method = func.method) {
                                 is Value.Function -> {
+                                    val totalParams = method.defaults?.defaultChunks?.size ?: boundArgs.size
+                                    val finalArgs = fillDefaultArgs(boundArgs, method, totalParams, frame, frames)
                                     val newFrame = CallFrame(method.chunk)
                                     newFrame.returnDst = dst
-                                    boundArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
+                                    finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
                                     frames.addLast(newFrame)
                                 }
                                 is Value.NativeFunction -> {
                                     frame.regs[dst] = method.fn(boundArgs)
                                 }
                                 else -> error("BoundMethod wraps non-callable: $method")
+                            }
+                        }
+                        is Value.Class -> {
+                            // Calling a Class value creates a new instance (constructor call)
+                            val instance = Value.Instance(func.descriptor)
+                            frame.regs[dst] = instance
+
+                            // Look up and call init if it exists
+                            val initMethod = lookupMethod(instance, "init")
+                            if (initMethod != null) {
+                                val boundArgs = listOf(instance) + args
+                                when (initMethod) {
+                                    is Value.Function -> {
+                                        val totalParams = initMethod.defaults?.defaultChunks?.size ?: boundArgs.size
+                                        val finalArgs = fillDefaultArgs(boundArgs, initMethod, totalParams, frame, frames)
+                                        val newFrame = CallFrame(initMethod.chunk)
+                                        newFrame.returnDst = dst
+                                        finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
+                                        frames.addLast(newFrame)
+                                    }
+                                    is Value.NativeFunction -> {
+                                        initMethod.fn(boundArgs)
+                                    }
+                                    else -> error("init is not callable: $initMethod")
+                                }
                             }
                         }
                         else -> error("Cannot call non-function: ${frame.regs[src1]}")
@@ -304,5 +353,110 @@ class VM {
             current = current.superClass
         }
         return false
+    }
+
+    /**
+     * Fill in default argument values for a function call.
+     * @param args The arguments passed by the caller
+     * @param func The function being called
+     * @param totalParams The total number of parameters the function expects
+     * @param callerFrame The caller's frame (for evaluating defaults in caller's context)
+     * @param frames The call frame stack
+     * @return The final argument list with defaults filled in
+     */
+    private fun fillDefaultArgs(
+        args: List<Value>,
+        func: Value.Function,
+        totalParams: Int,
+        callerFrame: CallFrame,
+        frames: ArrayDeque<CallFrame>
+    ): List<Value> {
+        val defaults = func.defaults
+
+        // If no defaults or exact arg count, return as-is
+        if (defaults == null || args.size == totalParams) {
+            if (args.size < totalParams) {
+                error("Expected $totalParams arguments but got ${args.size}")
+            }
+            return args
+        }
+
+        // Too many args
+        if (args.size > totalParams) {
+            error("Expected at most $totalParams arguments but got ${args.size}")
+        }
+
+        // Need to fill in defaults for missing args
+        val finalArgs = args.toMutableList()
+
+        for (i in args.size until totalParams) {
+            val defaultChunkIdx = defaults.defaultChunks.getOrNull(i)
+            if (defaultChunkIdx != null) {
+                // Evaluate the default value in the caller's context
+                val defaultChunk = callerFrame.chunk.functions[defaultChunkIdx]
+                val defaultFrame = CallFrame(defaultChunk)
+                // Execute the default value chunk
+                executeDefaultChunk(defaultFrame, frames)
+                // The result is in register 0 of the default frame
+                val defaultValue = defaultFrame.regs[0] ?: Value.Null
+                finalArgs.add(defaultValue)
+            } else {
+                // No default for this parameter - it's required
+                error("Missing required argument at position $i (expected $totalParams arguments, got ${args.size})")
+            }
+        }
+
+        return finalArgs
+    }
+
+    /**
+     * Execute a default value chunk to compute its value.
+     * This runs a small chunk that should produce a single value in register 0.
+     */
+    private fun executeDefaultChunk(frame: CallFrame, frames: ArrayDeque<CallFrame>) {
+        while (frame.ip < frame.chunk.code.size) {
+            val word = frame.chunk.code[frame.ip++]
+            val opcode = OpCode.entries.find { it.code == (word and 0xFF).toByte() }
+                ?: error("Unknown opcode in default value: ${word and 0xFF}")
+            val dst = (word shr 8) and 0x0F
+            val src1 = (word shr 12) and 0x0F
+            val src2 = (word shr 16) and 0x0F
+            val imm = (word shr 20) and 0xFFF
+
+            when (opcode) {
+                OpCode.PUSH_CONST -> frame.regs[dst] = frame.chunk.constants[imm]
+                OpCode.PUSH_NULL -> frame.regs[dst] = Value.Null
+                OpCode.PUSH_TRUE -> frame.regs[dst] = Value.Boolean.TRUE
+                OpCode.PUSH_FALSE -> frame.regs[dst] = Value.Boolean.FALSE
+                OpCode.LOAD_GLOBAL -> frame.regs[dst] = globals[frame.chunk.strings[imm]]
+                    ?: error("Undefined global in default value: ${frame.chunk.strings[imm]}")
+                OpCode.ADD -> {
+                    val a = frame.regs[src1]!!
+                    val b = frame.regs[src2]!!
+                    if (a is Value.String || b is Value.String) {
+                        frame.regs[dst] = Value.String(a.toString() + b.toString())
+                    } else {
+                        frame.regs[dst] = binop(a, b) { x, y -> x + y }
+                    }
+                }
+                OpCode.SUB -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a - b }
+                OpCode.MUL -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a * b }
+                OpCode.DIV -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a / b }
+                OpCode.MOD -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a % b }
+                OpCode.NEG -> frame.regs[dst] = negate(frame.regs[src1]!!)
+                OpCode.NOT -> frame.regs[dst] = if (isFalsy(frame.regs[src1]!!)) Value.Boolean.TRUE else Value.Boolean.FALSE
+                OpCode.EQ -> frame.regs[dst] = if (frame.regs[src1] == frame.regs[src2]) Value.Boolean.TRUE else Value.Boolean.FALSE
+                OpCode.NEQ -> frame.regs[dst] = if (frame.regs[src1] != frame.regs[src2]) Value.Boolean.TRUE else Value.Boolean.FALSE
+                OpCode.LT -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a < b }
+                OpCode.LTE -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a <= b }
+                OpCode.GT -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a > b }
+                OpCode.GTE -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a >= b }
+                OpCode.RETURN -> {
+                    // Default value computation complete
+                    return
+                }
+                else -> error("Unsupported opcode in default value: $opcode")
+            }
+        }
     }
 }

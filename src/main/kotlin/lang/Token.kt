@@ -63,6 +63,9 @@ enum class TokenType {
     DOT_DOT,
     COLON,
     SEMICOLON,
+    INTERPOLATION_START,  // ${
+    INTERPOLATION_END,    // } (closing interpolation)
+    DOLLAR,               // $ (for error reporting if not followed by {)
     EOF
 }
 

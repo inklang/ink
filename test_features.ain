@@ -1,0 +1,43 @@
+// Test String Interpolation
+let name = "World"
+let greeting = "Hello ${name}!"
+print(greeting)
+
+// Test with multiple interpolations
+let age = 25
+let info = "${name} is ${age} years old"
+print(info)
+
+// Test interpolation at start of string
+let exclamation = "${name}!"
+print(exclamation)
+
+// Test Default Parameters
+fn greet(person, greeting = "Hello") {
+    print(greeting + " " + person)
+}
+
+// Call with all args
+greet("Alice", "Hi")
+
+// Call with default
+greet("Bob")
+
+// Test multiple default params
+fn configure(host, port = 8080, timeout = 30) {
+    print(host)
+    print(port)
+    print(timeout)
+}
+
+// Call with all args
+configure("localhost", 3000, 60)
+
+// Call with one default
+configure("localhost", 3000)
+
+// Call with two defaults
+configure("localhost")
+
+// Test default param validation (this should be a parse error if uncommented)
+// fn bad(a = 1, b) {}  // Non-default after default

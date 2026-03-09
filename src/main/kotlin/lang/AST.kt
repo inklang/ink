@@ -77,7 +77,7 @@ sealed class Expr {
     data class IsExpr(val expr: Expr, val type: Token) : Expr()
 }
 
-data class Param(val name: Token, val type: Token?)
+data class Param(val name: Token, val type: Token?, val defaultValue: Expr? = null)
 
 sealed class Stmt {
     data class ImportStmt(val namespace: Token) : Stmt()

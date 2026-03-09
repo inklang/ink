@@ -17,7 +17,8 @@ sealed class IrInstr {
         val name: String,
         val arity: Int,
         val instrs: List<IrInstr>,
-        val constants: List<Value>
+        val constants: List<Value>,
+        val defaultValues: List<DefaultValueInfo?> = emptyList()  // Default value IR for each param
     ) : IrInstr()
     data class Call(val dst: Int, val func: Int, val args: List<Int>) : IrInstr()
     data class Return(val src: Int) : IrInstr()
@@ -41,6 +42,17 @@ sealed class IrInstr {
 
 data class MethodInfo(
     val arity: Int,  // includes implicit self parameter
+    val instrs: List<IrInstr>,
+    val constants: List<Value>,
+    val defaultValues: List<DefaultValueInfo?> = emptyList()  // One per param, null if no default
+)
+
+/**
+ * Represents a default value expression for a parameter.
+ * The instrs and constants represent the lowered expression that computes the default value.
+ * This is executed at call time if the argument is not provided.
+ */
+data class DefaultValueInfo(
     val instrs: List<IrInstr>,
     val constants: List<Value>
 )

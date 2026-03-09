@@ -84,6 +84,25 @@ class IrCompiler {
                     val funcChunk = IrCompiler().compile(funcResult)
                     val idx = chunk.functions.size
                     chunk.functions.add(funcChunk)
+
+                    // Compile default value expressions
+                    val defaultChunkIndices = instr.defaultValues.map { defaultInfo ->
+                        if (defaultInfo != null) {
+                            // Compile the default value expression
+                            val defaultRanges = LivenessAnalyzer().analyze(defaultInfo.instrs)
+                            val defaultAllocation = RegisterAllocator().allocate(defaultRanges, 0)
+                            val defaultRewritten = rewriteRegisters(defaultInfo.instrs, defaultAllocation)
+                            val defaultResult = AstLowerer.LoweredResult(defaultRewritten, defaultInfo.constants)
+                            val defaultChunk = IrCompiler().compile(defaultResult)
+                            val defaultIdx = chunk.functions.size
+                            chunk.functions.add(defaultChunk)
+                            defaultIdx
+                        } else {
+                            null
+                        }
+                    }
+                    chunk.functionDefaults.add(FunctionDefaults(defaultChunkIndices))
+
                     chunk.write(OpCode.LOAD_FUNC, dst = instr.dst, imm = idx)
                 }
                 is IrInstr.Return -> chunk.write(OpCode.RETURN, src1 = instr.src)

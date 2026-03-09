@@ -176,9 +176,24 @@ class AstLowerer {
         }
         lowerer.regCounter = stmt.params.size
         val result = lowerer.lower(stmt.body.stmts)
+
+        // Lower default value expressions
+        // Each default value is lowered as a standalone expression that produces its result in register 0
+        val defaultValues = stmt.params.map { param ->
+            param.defaultValue?.let { defaultValue ->
+                val defaultLowerer = AstLowerer()
+                // Default values are evaluated in the caller's context
+                // They can access globals but not the function's locals
+                val defaultDst = defaultLowerer.freshReg()
+                defaultLowerer.lowerExpr(defaultValue, defaultDst)
+                val defaultResult = defaultLowerer.lower(emptyList())
+                DefaultValueInfo(defaultResult.instrs, defaultResult.constants)
+            }
+        }
+
         val dst = freshReg()
         locals[stmt.name.lexeme] = dst
-        emit(IrInstr.LoadFunc(dst, stmt.name.lexeme, stmt.params.size, result.instrs, result.constants))
+        emit(IrInstr.LoadFunc(dst, stmt.name.lexeme, stmt.params.size, result.instrs, result.constants, defaultValues))
         // Also store in globals so other functions can call it
         emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
     }
@@ -199,10 +214,23 @@ class AstLowerer {
                 }
                 methodLowerer.regCounter = member.params.size + 1  // +1 for self
                 val result = methodLowerer.lower(member.body.stmts)
+
+                // Lower default value expressions for method params
+                val defaultValues = member.params.map { param ->
+                    param.defaultValue?.let { defaultValue ->
+                        val defaultLowerer = AstLowerer()
+                        val defaultDst = defaultLowerer.freshReg()
+                        defaultLowerer.lowerExpr(defaultValue, defaultDst)
+                        val defaultResult = defaultLowerer.lower(emptyList())
+                        DefaultValueInfo(defaultResult.instrs, defaultResult.constants)
+                    }
+                }
+
                 methods[member.name.lexeme] = MethodInfo(
                     arity = member.params.size + 1,  // includes self
                     instrs = result.instrs,
-                    constants = result.constants
+                    constants = result.constants,
+                    defaultValues = defaultValues
                 )
             }
         }
@@ -327,23 +355,11 @@ class AstLowerer {
             }
         }
         is Expr.CallExpr -> {
-            // Check if this is a constructor call (callee is a class name)
-            val isConstructorCall = expr.callee is Expr.VariableExpr &&
-                !locals.containsKey(expr.callee.name.lexeme)
-
-            if (isConstructorCall) {
-                // Constructor call: ClassName(args)
-                val className = (expr.callee as Expr.VariableExpr).name.lexeme
-                val classReg = freshReg()
-                emit(LoadGlobal(classReg, className))
-                val argRegs = expr.arguments.map { lowerExpr(it, freshReg()) }
-                emit(IrInstr.NewInstance(dst, classReg, argRegs))
-            } else {
-                // Regular function call
-                val funcReg = lowerExpr(expr.callee, freshReg())
-                val argRegs = expr.arguments.map { lowerExpr(it, freshReg()) }
-                emit(Call(dst, funcReg, argRegs))
-            }
+            // Regular function/method/constructor call
+            // The VM handles Value.Class by creating a new instance
+            val funcReg = lowerExpr(expr.callee, freshReg())
+            val argRegs = expr.arguments.map { lowerExpr(it, freshReg()) }
+            emit(Call(dst, funcReg, argRegs))
             dst
         }
         is Expr.GroupExpr -> lowerExpr(expr.expr, dst)

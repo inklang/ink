@@ -22,6 +22,10 @@ class VM {
         "Map" to Value.Class(Builtins.MapClass),
         "EnumValue" to Value.Class(Builtins.EnumValueClass),
         "EnumNamespace" to Value.Class(Builtins.EnumNamespaceClass),
+        "print" to Value.NativeFunction { args ->
+            println(args.joinToString(" ") { valueToString(it) })
+            Value.Null
+        },
     )
 
     data class CallFrame(

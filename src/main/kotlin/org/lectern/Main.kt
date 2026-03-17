@@ -51,10 +51,5 @@ fun main(args: Array<String>) {
     chunk.disassemble()
     println("\n=== Execution ===")
     val vm = VM()
-    vm.globals["b"] = Value.Boolean(true);
-    vm.globals["print"] = Value.NativeFunction { args ->
-        println(args.joinToString(" ") { it.toString() })
-        Value.Null
-    }
     vm.execute(chunk)
 }

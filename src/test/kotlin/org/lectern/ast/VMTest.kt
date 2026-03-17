@@ -39,6 +39,13 @@ private fun compileAndRun(source: String): List<String> {
 class VMTest {
 
     @Test
+    fun testPrintIsBuiltin() {
+        // VM should have print registered by default — no manual setup
+        val vm = VM()
+        assertTrue(vm.globals.containsKey("print"), "VM should have built-in print")
+    }
+
+    @Test
     fun testPrintInteger() {
         val output = compileAndRun("print(42)")
         assertEquals(listOf("42"), output)

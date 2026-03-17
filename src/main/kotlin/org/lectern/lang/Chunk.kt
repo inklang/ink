@@ -26,6 +26,7 @@ class Chunk {
     val functions = mutableListOf<Chunk>()
     val classes = mutableListOf<ClassInfo>()
     val functionDefaults = mutableListOf<FunctionDefaults>()  // Parallel to functions - defaults for each function
+    var spillSlotCount: Int = 0
 
     fun addConstant(value: Value): Int {
         constants.add(value)

@@ -31,16 +31,16 @@ class RegisterAllocatorTest {
         )
 
         // All three must be allocated (no spills)
-        assertTrue(allocator.spills.isEmpty(), "Expected no spills for non-overlapping ranges")
+        assertTrue(result.spills.isEmpty(), "Expected no spills for non-overlapping ranges")
 
         // Physical registers may be reused since ranges don't overlap
-        val physRegs = result.values.toList()
+        val physRegs = result.allocation.values.toList()
         assertTrue(physRegs.size == 3, "All 3 virtual registers should be allocated")
 
         // Every virtual register must be present in the allocation
-        assertTrue(result.containsKey(0))
-        assertTrue(result.containsKey(1))
-        assertTrue(result.containsKey(2))
+        assertTrue(result.allocation.containsKey(0))
+        assertTrue(result.allocation.containsKey(1))
+        assertTrue(result.allocation.containsKey(2))
     }
 
     // -------------------------------------------------------------------------
@@ -60,11 +60,11 @@ class RegisterAllocatorTest {
         )
 
         // All three must be in allocation
-        assertEquals(3, result.size, "Expected all 3 virtual regs allocated")
-        assertTrue(allocator.spills.isEmpty(), "Expected no spills with 16 regs available")
+        assertEquals(3, result.allocation.size, "Expected all 3 virtual regs allocated")
+        assertTrue(result.spills.isEmpty(), "Expected no spills with 16 regs available")
 
         // Physical registers must all differ
-        val physRegs = result.values.toList()
+        val physRegs = result.allocation.values.toList()
         assertEquals(3, physRegs.distinct().size, "Expected 3 distinct physical regs for overlapping ranges")
     }
 
@@ -83,13 +83,13 @@ class RegisterAllocatorTest {
             )
         )
 
-        assertTrue(allocator.spills.isEmpty(), "Expected no spills")
-        assertTrue(result.containsKey(0), "r0 must be allocated")
-        assertTrue(result.containsKey(1), "r1 must be allocated")
+        assertTrue(result.spills.isEmpty(), "Expected no spills")
+        assertTrue(result.allocation.containsKey(0), "r0 must be allocated")
+        assertTrue(result.allocation.containsKey(1), "r1 must be allocated")
 
         // r0 ends at 1, r1 starts at 2: the allocator should reuse the freed register
         assertEquals(
-            result[0], result[1],
+            result.allocation[0], result.allocation[1],
             "Sequential non-overlapping ranges should reuse the same physical register"
         )
     }
@@ -106,10 +106,10 @@ class RegisterAllocatorTest {
             )
         )
 
-        assertTrue(allocator.spills.isEmpty(), "Expected no spills")
+        assertTrue(result.spills.isEmpty(), "Expected no spills")
         // All three should map to the same physical register
-        assertEquals(result[0], result[1], "r0 and r1 should share a physical reg")
-        assertEquals(result[1], result[2], "r1 and r2 should share a physical reg")
+        assertEquals(result.allocation[0], result.allocation[1], "r0 and r1 should share a physical reg")
+        assertEquals(result.allocation[1], result.allocation[2], "r1 and r2 should share a physical reg")
     }
 
     // -------------------------------------------------------------------------
@@ -130,9 +130,9 @@ class RegisterAllocatorTest {
             numParams = 2
         )
 
-        assertEquals(0, result[0], "Parameter 0 must map to physical reg 0")
-        assertEquals(1, result[1], "Parameter 1 must map to physical reg 1")
-        assertTrue((result[2] ?: -1) >= 2, "Non-parameter virtual reg must not steal a param register")
+        assertEquals(0, result.allocation[0], "Parameter 0 must map to physical reg 0")
+        assertEquals(1, result.allocation[1], "Parameter 1 must map to physical reg 1")
+        assertTrue((result.allocation[2] ?: -1) >= 2, "Non-parameter virtual reg must not steal a param register")
     }
 
     @Test
@@ -146,9 +146,9 @@ class RegisterAllocatorTest {
             numParams = 1
         )
 
-        assertEquals(0, result[0], "Parameter must be at physical reg 0")
-        assertTrue((result[1] ?: -1) >= 1, "Non-parameter reg must be >= 1")
-        assertTrue(result[0] != result[1], "Parameter and non-parameter must not share a physical reg")
+        assertEquals(0, result.allocation[0], "Parameter must be at physical reg 0")
+        assertTrue((result.allocation[1] ?: -1) >= 1, "Non-parameter reg must be >= 1")
+        assertTrue(result.allocation[0] != result.allocation[1], "Parameter and non-parameter must not share a physical reg")
     }
 
     @Test
@@ -162,9 +162,9 @@ class RegisterAllocatorTest {
             numParams = 2
         )
 
-        assertEquals(0, result[0])
-        assertEquals(1, result[1])
-        assertTrue(allocator.spills.isEmpty())
+        assertEquals(0, result.allocation[0])
+        assertEquals(1, result.allocation[1])
+        assertTrue(result.spills.isEmpty())
     }
 
     // -------------------------------------------------------------------------
@@ -176,16 +176,16 @@ class RegisterAllocatorTest {
         // 17 virtual regs all live at [0,10] with only 16 physical regs
         val allocator = RegisterAllocator(numRegs = 16)
         val triples = (0 until 17).map { Triple(it, 0, 10) }.toTypedArray()
-        allocator.allocate(ranges(*triples))
+        val result = allocator.allocate(ranges(*triples))
 
         // At least one virtual reg must have been spilled
         assertTrue(
-            allocator.spills.isNotEmpty(),
+            result.spills.isNotEmpty(),
             "Expected at least one spill when 17 ranges compete for 16 registers"
         )
 
         // All 17 virtual regs should have an allocation (spilled ones keep their allocation too)
-        assertEquals(17, allocator.allocation.size, "All 17 virtual regs must be in the allocation map")
+        assertEquals(17, result.allocation.size, "All 17 virtual regs must be in the allocation map")
     }
 
     @Test
@@ -193,9 +193,9 @@ class RegisterAllocatorTest {
         val allocator = RegisterAllocator(numRegs = 4)
         // 6 overlapping ranges for 4 registers => 2 spills
         val triples = (0 until 6).map { Triple(it, 0, 10) }.toTypedArray()
-        allocator.allocate(ranges(*triples))
+        val result = allocator.allocate(ranges(*triples))
 
-        val spillValues = allocator.spills.values.toList()
+        val spillValues = result.spills.values.toList()
         assertEquals(
             spillValues.distinct().size, spillValues.size,
             "Each spilled virtual reg must get a unique stack slot"
@@ -221,12 +221,12 @@ class RegisterAllocatorTest {
 
         // 5 simultaneously live ranges into 4 registers → at least 1 spill
         assertTrue(
-            allocator.spills.isNotEmpty(),
+            result.spills.isNotEmpty(),
             "Expected at least 1 spill with 5 overlapping ranges and only 4 registers"
         )
 
         // Allocated physical registers must all be in [0, 3]
-        for ((_, physReg) in result) {
+        for ((_, physReg) in result.allocation) {
             assertTrue(physReg in 0..3, "Physical reg $physReg is out of range for a 4-register file")
         }
     }
@@ -234,7 +234,7 @@ class RegisterAllocatorTest {
     @Test
     fun `small register file two regs three overlapping ranges causes spills`() {
         val allocator = RegisterAllocator(numRegs = 2)
-        allocator.allocate(
+        val result = allocator.allocate(
             ranges(
                 Triple(0, 0, 5),
                 Triple(1, 0, 5),
@@ -243,7 +243,7 @@ class RegisterAllocatorTest {
         )
 
         assertTrue(
-            allocator.spills.isNotEmpty(),
+            result.spills.isNotEmpty(),
             "Expected spills with 3 overlapping ranges and only 2 registers"
         )
     }
@@ -257,8 +257,8 @@ class RegisterAllocatorTest {
         val allocator = RegisterAllocator(numRegs = 16)
         val result = allocator.allocate(emptyMap())
 
-        assertTrue(result.isEmpty(), "Expected empty allocation for empty ranges")
-        assertTrue(allocator.spills.isEmpty(), "Expected no spills for empty ranges")
+        assertTrue(result.allocation.isEmpty(), "Expected empty allocation for empty ranges")
+        assertTrue(result.spills.isEmpty(), "Expected no spills for empty ranges")
     }
 
     @Test
@@ -266,8 +266,8 @@ class RegisterAllocatorTest {
         val allocator = RegisterAllocator(numRegs = 16)
         val result = allocator.allocate(emptyMap(), numParams = 0)
 
-        assertTrue(result.isEmpty())
-        assertTrue(allocator.spills.isEmpty())
+        assertTrue(result.allocation.isEmpty())
+        assertTrue(result.spills.isEmpty())
     }
 
     // -------------------------------------------------------------------------
@@ -279,9 +279,9 @@ class RegisterAllocatorTest {
         val allocator = RegisterAllocator(numRegs = 16)
         val result = allocator.allocate(ranges(Triple(0, 0, 5)))
 
-        assertTrue(result.containsKey(0), "Virtual reg 0 must be in allocation")
-        assertEquals(0, result[0], "Single virtual reg with no params must get physical reg 0")
-        assertTrue(allocator.spills.isEmpty())
+        assertTrue(result.allocation.containsKey(0), "Virtual reg 0 must be in allocation")
+        assertEquals(0, result.allocation[0], "Single virtual reg with no params must get physical reg 0")
+        assertTrue(result.spills.isEmpty())
     }
 
     @Test
@@ -297,9 +297,9 @@ class RegisterAllocatorTest {
             numParams = 1
         )
 
-        assertEquals(0, result[0], "Param virtual reg 0 must map to physical reg 0")
-        assertEquals(1, result[1], "First non-param virtual reg must map to physical reg 1 (numParams offset)")
-        assertTrue(allocator.spills.isEmpty())
+        assertEquals(0, result.allocation[0], "Param virtual reg 0 must map to physical reg 0")
+        assertEquals(1, result.allocation[1], "First non-param virtual reg must map to physical reg 1 (numParams offset)")
+        assertTrue(result.spills.isEmpty())
     }
 
     @Test
@@ -312,9 +312,9 @@ class RegisterAllocatorTest {
             numParams = 2
         )
 
-        assertTrue(result.containsKey(2), "Virtual reg 2 must be allocated")
-        assertEquals(2, result[2], "With numParams=2, first free reg is physical 2")
-        assertTrue(allocator.spills.isEmpty())
+        assertTrue(result.allocation.containsKey(2), "Virtual reg 2 must be allocated")
+        assertEquals(2, result.allocation[2], "With numParams=2, first free reg is physical 2")
+        assertTrue(result.spills.isEmpty())
     }
 
     // -------------------------------------------------------------------------
@@ -334,11 +334,11 @@ class RegisterAllocatorTest {
         )
 
         // With 16 regs and only 4 ranges, none should spill
-        assertTrue(allocator.spills.isEmpty(), "No spills expected with 4 ranges and 16 registers")
-        assertEquals(4, result.size, "All 4 virtual regs must appear in allocation")
+        assertTrue(result.spills.isEmpty(), "No spills expected with 4 ranges and 16 registers")
+        assertEquals(4, result.allocation.size, "All 4 virtual regs must appear in allocation")
 
         // All physical regs must be valid (within [0, 15])
-        for ((_, physReg) in result) {
+        for ((_, physReg) in result.allocation) {
             assertTrue(physReg in 0..15, "Physical reg $physReg out of [0,15]")
         }
     }
@@ -357,9 +357,9 @@ class RegisterAllocatorTest {
             )
         )
 
-        assertTrue(allocator.spills.isEmpty())
-        assertEquals(5, result.size)
-        for ((_, physReg) in result) {
+        assertTrue(result.spills.isEmpty())
+        assertEquals(5, result.allocation.size)
+        for ((_, physReg) in result.allocation) {
             assertTrue(physReg in 0..15)
         }
     }
@@ -370,7 +370,7 @@ class RegisterAllocatorTest {
         // When virtual 1 arrives and the single reg is taken by virtual 0,
         // the allocator must spill the one ending latest — that is virtual 0.
         val allocator = RegisterAllocator(numRegs = 1)
-        allocator.allocate(
+        val result = allocator.allocate(
             ranges(
                 Triple(0, 0, 10),
                 Triple(1, 0, 2)
@@ -379,17 +379,17 @@ class RegisterAllocatorTest {
 
         // virtual 0 (ends at 10) should be the spill candidate
         assertTrue(
-            allocator.spills.containsKey(0),
+            result.spills.containsKey(0),
             "Virtual reg 0 (ending latest) should be spilled in favour of shorter-lived reg"
         )
     }
 
     @Test
-    fun `return value of allocate is same reference as allocation property`() {
+    fun `return value of allocate contains the allocation map`() {
         val allocator = RegisterAllocator(numRegs = 16)
         val result = allocator.allocate(ranges(Triple(0, 0, 3)))
 
-        // The returned map must contain the same entries as allocator.allocation
-        assertEquals(allocator.allocation, result)
+        // The result must contain an allocation map with the entry
+        assertTrue(result.allocation.containsKey(0), "Allocation should contain virtual reg 0")
     }
 }

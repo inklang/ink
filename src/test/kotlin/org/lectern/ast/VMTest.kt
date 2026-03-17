@@ -370,4 +370,38 @@ class VMTest {
         """.trimIndent())
         assertEquals(listOf("1"), output)
     }
+
+    @Test
+    fun testNotKeyword() {
+        val output = compileAndRun(
+            """
+            let a = not true
+            print(a)
+            """.trimIndent()
+        )
+        assertEquals(listOf("Boolean(value=false)"), output)
+    }
+
+    @Test
+    fun testNotKeywordFalse() {
+        val output = compileAndRun(
+            """
+            let a = not false
+            print(a)
+            """.trimIndent()
+        )
+        assertEquals(listOf("Boolean(value=true)"), output)
+    }
+
+    @Test
+    fun testPowerOperator() {
+        val output = compileAndRun("print(2 ** 10)")
+        assertEquals(listOf("1024"), output)
+    }
+
+    @Test
+    fun testPowerOperatorFloat() {
+        val output = compileAndRun("print(9.0 ** 0.5)")
+        assertEquals(listOf("3.0"), output)
+    }
 }

@@ -44,6 +44,7 @@ class IrCompiler {
                         TokenType.GTE -> OpCode.GTE
                         TokenType.PERCENT -> OpCode.MOD
                         TokenType.DOT_DOT -> OpCode.RANGE
+                        TokenType.POW -> OpCode.POW
                         else -> error("Unknown binary op: ${instr.op}")
                     }
                     chunk.write(op, dst = instr.dst, src1 = instr.src1, src2 = instr.src2)
@@ -51,7 +52,7 @@ class IrCompiler {
                 is IrInstr.UnaryOp -> {
                     val op = when (instr.op) {
                         TokenType.MINUS -> OpCode.NEG
-                        TokenType.BANG -> OpCode.NOT
+                        TokenType.BANG, TokenType.KW_NOT -> OpCode.NOT
                         else -> error("Unknown unary op: ${instr.op}")
                     }
                     chunk.write(op, dst = instr.dst, src1 = instr.src)

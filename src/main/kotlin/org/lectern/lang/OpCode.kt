@@ -53,4 +53,5 @@ enum class OpCode(val code: Byte) {
     BUILD_CLASS(0x25),  // dst = BUILD_CLASS name_idx, superclass_idx, method_count; followed by method entries
     SPILL(0x26),    // imm=slot, src1=physical_reg
     UNSPILL(0x27),  // dst=physical_reg, imm=slot
+    POW(0x28),      // dst = src1 ^ src2
 }

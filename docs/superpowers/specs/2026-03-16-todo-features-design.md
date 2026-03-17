@@ -6,19 +6,31 @@
 
 ## Major Refactor: Unify Collections as Classes
 
-Before implementing new features, unify `Value.List`, `Value.Map`, and `Value.Range` (plus `Value.Iterator`) into `Value.Instance` backed by built-in classes.
+Before implementing new features, unify `Value.List` and `Value.Map` into `Value.Instance` backed by built-in classes. `Value.Range` and `Value.Iterator` are already implemented as `Value.Instance` via `Builtins.RangeClass` and `Builtins.IteratorClass` — extend this pattern to Array and Map.
 
 ### Changes
 
-- **Remove:** `Value.List`, `Value.Map`, `Value.Range`, `Value.Iterator`
-- **Add built-in classes** registered as globals at VM startup:
-  - `Array` — backed by `MutableList<Value>` internally, exposes `get(index)`, `set(index, value)`, `size()`, `push(value)`, `iter()`, `hasNext()`, `next()`
-  - `Map` — backed by `MutableMap<Value, Value>` internally, exposes `get(key)`, `set(key, value)`, `size()`, `keys()`, `values()`, `delete(key)`
-  - `Range` — backed by start/end ints, exposes `iter()`, `hasNext()`, `next()`
-- **Remove opcodes:** `NEW_ARRAY`, `NEW_MAP` (if exists), `RANGE`
+- **Remove:** `Value.List`, `Value.Map`
+- **Add built-in classes** registered as globals at VM startup (following the existing `Builtins.RangeClass` pattern):
+  - `Builtins.ArrayClass` — `ClassDescriptor` with native methods. Instances store elements in a `__items` field (internally a `MutableList<Value>` wrapped in a `Value.Instance`). Methods: `get(index)`, `set(index, value)`, `size()`, `push(value)`, `iter()`, `hasNext()`, `next()`
+  - `Builtins.MapClass` — `ClassDescriptor` with native methods. Instances store entries in a `__entries` field (internally a `MutableMap<Value, Value>`). Methods: `get(key)`, `set(key, value)`, `size()`, `keys()`, `values()`, `delete(key)`
+- **Remove opcodes:** `NEW_ARRAY`, `RANGE`
 - **Remove IR instructions:** `NewArray`
-- Array/Map/Range creation goes through `NewInstance` like any other class
-- `GET_INDEX` / `SET_INDEX` remain but dispatch through the instance's `get`/`set` methods
+- Array creation: `NewInstance(ArrayClass, elements)` — constructor takes variadic elements
+- Map creation: `NewInstance(MapClass, [])` followed by `set()` calls
+- Range creation already uses `Builtins.newRange()` — keep as-is
+- `GET_INDEX` / `SET_INDEX` dispatch: instead of pattern-matching on `Value.List`, check for `Value.Instance` and call its `get`/`set` methods
+- `ListExpr` lowering: currently emits `NewArray(dst, elementRegs)`. After refactor, emits `LoadGlobal(arrayClassReg, "Array")` + `NewInstance(dst, arrayClassReg, elementRegs)`
+
+### VM migration scope
+The VM currently special-cases `Value.List` in:
+- `NEW_ARRAY` (line 167) — creates `Value.List`
+- `GET_INDEX` (line 257) — casts to `Value.List`
+- `SET_INDEX` (line 264) — casts to `Value.List`
+- `IS_TYPE` (line 229) — checks `typeName == "list"`
+- `ADD` — string concat checks
+
+All of these need to be updated to use `Value.Instance` with method dispatch or field access. `GET_FIELD` already handles `Value.Instance` correctly (line 172).
 
 ---
 
@@ -98,6 +110,13 @@ Call(_, map.set, ["b", 2])
 - Emit `LoadFunc(dst, "__lambda_N", arity, instrs, constants, defaultValues)`
 - No `StoreGlobal` — lambda stays in register only
 
+### Closures
+Lambdas do NOT support closures in v1. A lambda can only reference:
+- Its own parameters
+- Global variables (via `LoadGlobal`)
+
+Referencing local variables from an enclosing scope is not supported and will result in a runtime error (variable not found). This is consistent with how `lowerFunc` already works — it creates a fresh `AstLowerer` with no access to the parent's `locals` map. Closure/upvalue support can be added later as a separate feature.
+
 ### New IR/Opcodes: None
 
 ---
@@ -109,21 +128,38 @@ Call(_, map.set, ["b", 2])
 ### Lexer/Parser
 - No changes — already fully parsed as `Stmt.EnumStmt(name, values)`
 
-### AstLowerer — Desugar to class + instances
+### AstLowerer — Desugar to namespace instance
+
+`Value.Class` wraps a `ClassDescriptor` which has no mutable fields — you cannot `SetField` on a class. Instead, enums desugar to an instance used as a namespace:
+
 ```
 // enum Color { RED, GREEN, BLUE }
 // becomes:
-classReg = LoadClass("Color", null, {})
-// Color.RED = instance with { name: "RED", ordinal: 0 }
-enumValReg = NewInstance(classReg, [])
-SetField(enumValReg, "name", "RED")
-SetField(enumValReg, "ordinal", 0)
-SetField(classReg, "RED", enumValReg)
-// repeat for GREEN (ordinal 1), BLUE (ordinal 2)
-StoreGlobal("Color", classReg)
+// 1. Create enum value instances
+redReg = NewInstance(enumValueClass, [])
+SetField(redReg, "name", "RED")
+SetField(redReg, "ordinal", 0)
+
+greenReg = NewInstance(enumValueClass, [])
+SetField(greenReg, "name", "GREEN")
+SetField(greenReg, "ordinal", 1)
+
+blueReg = NewInstance(enumValueClass, [])
+SetField(blueReg, "name", "BLUE")
+SetField(blueReg, "ordinal", 2)
+
+// 2. Create namespace instance to hold enum values
+namespaceReg = NewInstance(enumNamespaceClass, [])
+SetField(namespaceReg, "RED", redReg)
+SetField(namespaceReg, "GREEN", greenReg)
+SetField(namespaceReg, "BLUE", blueReg)
+StoreGlobal("Color", namespaceReg)
 ```
 
+A `Builtins.EnumValueClass` and `Builtins.EnumNamespaceClass` (both empty `ClassDescriptor`s) are registered at VM startup.
+
 ### Runtime behavior
+- `Color.RED` → `GetField` on namespace instance → enum value instance
 - `Color.RED.name` → `"RED"`
 - `Color.RED.ordinal` → `0`
 - `Color.RED == Color.GREEN` → `false` (instance identity)
@@ -163,10 +199,10 @@ table Users {
 
 ### VM/Runtime
 - On first use, creates SQLite table with the defined schema
-- `Users[1]` → SELECT WHERE key = ?
-- `Users[1] = { name: "Bob", ... }` → INSERT OR REPLACE with defaults for omitted fields
+- `Users[1]` → `GET_INDEX` dispatches to table's `get` method → SELECT WHERE key = ? → returns instance with fields
+- `Users[1] = { name: "Bob", ... }` → `SET_INDEX` dispatches to table's `set` method → INSERT OR REPLACE. The RHS `{ ... }` is parsed as a `MapExpr` (map literal), which the table's set method unpacks into columns, applying defaults for omitted fields
 - `Users.delete(1)` → DELETE WHERE key = ?
-- SQLite file: auto-named relative to script
+- SQLite file: auto-named relative to script (e.g., `<script_name>.db`)
 
 ### Dependencies
 - `org.xerial:sqlite-jdbc` added to Gradle
@@ -204,7 +240,7 @@ config Settings {
 ### AstLowerer
 - Desugars to class instance with fields populated from YAML at initialization
 - Missing field + no default = runtime error
-- Read-only at runtime (SetField on config instances throws error)
+- Read-only at runtime: enforced via a `Builtins.ConfigClass` whose descriptor has a `readOnly` flag. The VM's `SET_FIELD` handler checks this flag and throws "Cannot modify config field" error.
 
 ### Dependencies
 - SnakeYAML (or similar) added to Gradle
@@ -234,17 +270,20 @@ import spawn from arena   // direct: spawn()
 5. `StoreGlobal("utils", namespaceInstance)`
 6. `utils.doSomething()` works via `GetField` on the namespace
 
-**`import spawn from arena`:**
+**`import spawn, reset from arena`:**
 1. Same resolution and execution as above
-2. Extract only requested symbols from module globals
-3. `StoreGlobal("spawn", value)` — injected directly into caller's scope
+2. Extract each requested symbol from module globals
+3. `StoreGlobal("spawn", value)`, `StoreGlobal("reset", value)` — each injected directly into caller's scope
+4. If a requested symbol doesn't exist in the module, throw a compile-time or runtime error
 
 ### Module caching
 - Each file loaded and executed once
 - Subsequent imports return cached globals
+- Cache keyed by resolved absolute file path
 
 ### Circular imports
-- Detect and throw a clear error
+- Maintain a set of currently-loading file paths throughout the compilation pipeline
+- If a file is encountered that's already in the set, throw a clear error: "Circular import detected: a.lec -> b.lec -> a.lec"
 
 ### New IR/Opcodes: None
 
@@ -252,7 +291,7 @@ import spawn from arena   // direct: spawn()
 
 ## Build Order
 
-1. **Collection refactor** — unify Value.List/Map/Range into classes (prerequisite for Map)
+1. **Collection refactor** — unify Value.List/Map into classes, extending existing Range/Iterator pattern (prerequisite for Map)
 2. **Ternary** — standalone, smallest change
 3. **Map** — depends on collection refactor
 4. **Lambda** — standalone
@@ -261,6 +300,13 @@ import spawn from arena   // direct: spawn()
 7. **Config** — needs YAML dependency, new AST
 8. **Import** — needs module resolution, touches pipeline
 
+## Empty Collections
+
+- `ListExpr` currently requires `elements.isNotEmpty()` and `MapExpr` requires `entries.isNotEmpty()` in AST.kt
+- After the collection refactor, empty construction is via constructor call: `Array()`, `Map()`
+- Remove the `isNotEmpty()` constraints from `ListExpr` and `MapExpr`, or keep them and rely on constructor syntax for empty collections
+- Recommended: keep the constraints (empty `[]` and `{}` are ambiguous syntactically) — use `Array()` and `Map()` for empty collections
+
 ## Files Affected
 
 - `Token.kt` — new token types (QUESTION, KW_TABLE, KW_KEY, KW_CONFIG)
@@ -268,8 +314,9 @@ import spawn from arena   // direct: spawn()
 - `AST.kt` — revise ConfigStmt, replace RecordStmt with TableStmt, add TableField/ConfigField
 - `Parser.kt` — parseTable(), parseConfig(), parseTernary(), parseMap(), parseLambda()
 - `AstLowerer.kt` — implement all 7 TODO branches
-- `Value.kt` — remove List, Map, Range, Iterator
-- `VM.kt` — register built-in Array/Map/Range classes, refactor collection handling
+- `Value.kt` — remove List, Map; add Builtins.ArrayClass, Builtins.MapClass, Builtins.EnumValueClass, Builtins.EnumNamespaceClass, Builtins.ConfigClass
+- `ClassDescriptor` — add `readOnly: Boolean = false` flag for config enforcement
+- `VM.kt` — register built-in classes, refactor GET_INDEX/SET_INDEX/NEW_ARRAY/IS_TYPE to use instances, add readOnly check in SET_FIELD
 - `OpCode.kt` — remove NEW_ARRAY, RANGE opcodes
 - `IrInstr.kt` (IR.kt) — remove NewArray instruction
 - `IrCompiler.kt` — update for removed opcodes

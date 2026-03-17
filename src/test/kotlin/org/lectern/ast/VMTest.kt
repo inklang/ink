@@ -559,11 +559,12 @@ class VMTest {
         assertEquals(listOf("""say "hi""""), output)
     }
 
-    @Ignore("SSA round-trip bug with control flow")
+    @Ignore("SSA round-trip bug with control flow — test verifies optimizer correctness once fixed")
     @Test
     fun testDeadCodeEliminated() {
-        // The constant expression 2 + 3 should be folded; dead branch should be removed
-        // This just verifies correctness — optimization is transparent to behavior
+        // Verifies optimizer correctness: 2 + 3 folds to 5, dead branch is removed.
+        // @Ignore'd because if-false generates JumpIfFalse IR which triggers the known
+        // SSA control-flow limitation (same bug as testIfElseTrueBranch, testWhileLoop, etc.)
         val output = compileAndRun(
             """
             let x = 2 + 3

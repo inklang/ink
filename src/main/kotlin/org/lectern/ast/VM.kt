@@ -30,7 +30,9 @@ class VM {
         val regs: Array<Value?> = arrayOfNulls(16),
         var returnDst: Int = 0,  // Where to store the return value in caller
         val argBuffer: ArrayDeque<Value> = ArrayDeque()  // Staging buffer for PUSH_ARG
-    )
+    ) {
+        val spills: Array<Value?> = arrayOfNulls(chunk.spillSlotCount)
+    }
 
     fun execute(chunk: Chunk) {
         val frames = ArrayDeque<CallFrame>()
@@ -305,8 +307,8 @@ class VM {
                         else -> error("Cannot index: ${obj::class.simpleName}")
                     }
                 }
-                OpCode.SPILL   -> error("SPILL not yet implemented (waiting for spill array in CallFrame)")
-                OpCode.UNSPILL -> error("UNSPILL not yet implemented (waiting for spill array in CallFrame)")
+                OpCode.SPILL   -> frame.spills[imm] = frame.regs[src1]
+                OpCode.UNSPILL -> frame.regs[dst] = frame.spills[imm]!!
             }
         }
     }
@@ -461,6 +463,8 @@ class VM {
                     // Default value computation complete
                     return
                 }
+                OpCode.SPILL   -> frame.spills[imm] = frame.regs[src1]
+                OpCode.UNSPILL -> frame.regs[dst] = frame.spills[imm]!!
                 else -> error("Unsupported opcode in default value: $opcode")
             }
         }

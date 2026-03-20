@@ -1,41 +1,25 @@
-# Website
+# Quill Documentation
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+Documentation for the [Quill programming language](https://github.com/inklang/ainscript) - a compiled scripting language written in Kotlin that targets a register-based bytecode VM.
 
-## Installation
-
-```bash
-yarn
-```
-
-## Local Development
+## Quick Start
 
 ```bash
-yarn start
+npm install
+npm start
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+## About Quill
 
-## Build
+Quill is a modern scripting language with:
+- Clean, expressive syntax
+- Strong typing with type inference
+- First-class functions and closures
+- Classes with inheritance
+- String interpolation
+- Register-based bytecode VM (16 physical registers)
+- SSA-based optimizations
 
-```bash
-yarn build
-```
+## Contributing
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-## Deployment
-
-Using SSH:
-
-```bash
-USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+Found an error or want to improve the docs? Edit files in `docs/` and submit a pull request to [ainscript](https://github.com/inklang/ainscript).

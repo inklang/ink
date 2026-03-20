@@ -13,7 +13,7 @@ quill combines clean syntax with powerful features to make programming enjoyable
 
 ## Features
 
-- **Clean Syntax** - Readable and expressive code that's easy to write and mquilltquill
+- **Clean Syntax** - Readable and expressive code that's easy to write and maintain
 - **Strong Typing** - Type safety with type inference for cleaner code
 - **First-class Functions** - Functions as values, closures, and higher-order functions
 - **Data Structures** - Built-in support for arrays and maps
@@ -40,4 +40,4 @@ Ready to start coding? Head over to the [Installation Guide](/docs/getting-start
 
 ## Contributing
 
-quill is open source! Check out the [GitHub repository](https://github.com/your-github-username/quill) to contribute.
+quill is open source! Check out the [GitHub repository](https://github.com/inklang/ainscript) to contribute.

@@ -19,7 +19,7 @@ The standard way to run quill programs:
 You can pass multiple files:
 
 ```bash
-./gradlew run --args="mquill.quill utils.quill"
+./gradlew run --args="main.quill utils.quill"
 ```
 
 ## Common Run Options

@@ -11,11 +11,11 @@ const config = {
     v4: true,
   },
 
-  url: 'https://your-docusaurus-site.example.com',
+  url: 'https://inklang.github.io',
   baseUrl: '/',
 
-  organizationName: 'your-github-username',
-  projectName: 'quill',
+  organizationName: 'inklang',
+  projectName: 'docs',
 
   onBrokenLinks: 'throw',
 
@@ -31,7 +31,7 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
-          editUrl: 'https://github.com/your-github-username/quill/tree/main/docs/',
+          editUrl: 'https://github.com/inklang/ainscript/tree/main/docs/',
         },
         blog: {
           showReadingTime: true,
@@ -76,7 +76,7 @@ const config = {
           },
           {to: '/blog', label: 'Blog', position: 'left'},
           {
-            href: 'https://github.com/your-github-username/quill',
+            href: 'https://github.com/inklang/ainscript',
             label: 'GitHub',
             position: 'right',
           },
@@ -102,12 +102,12 @@ const config = {
             title: 'Community',
             items: [
               {
-                label: 'GitHub Discussions',
-                href: 'https://github.com/your-github-username/quill/discussions',
+                label: 'GitHub',
+                href: 'https://github.com/inklang/ainscript',
               },
               {
                 label: 'Discord',
-                href: 'https://discord.gg/your-invite',
+                href: 'https://discord.gg/inklang',
               },
             ],
           },
@@ -120,7 +120,7 @@ const config = {
               },
               {
                 label: 'GitHub',
-                href: 'https://github.com/your-github-username/quill',
+                href: 'https://github.com/inklang/ainscript',
               },
             ],
           },

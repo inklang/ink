@@ -49,7 +49,7 @@ print(global)  // Works
 Variable names must:
 
 - Start with a letter or underscore
-- Contquill only letters, numbers, and underscores
+- Contain only letters, numbers, and underscores
 - Not be a reserved keyword
 
 ```quill

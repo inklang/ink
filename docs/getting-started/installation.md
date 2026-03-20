@@ -8,7 +8,7 @@ Learn how to install and set up quill on your system.
 
 ## Prerequisites
 
-- **Java Runtime Environment (JRE) 11+** - quill runs on the JVM
+- **Java Development Kit (JDK) 21** - quill runs on the JVM
 - **Gradle** (optional) - For building from source
 
 ## Building from Source
@@ -16,8 +16,8 @@ Learn how to install and set up quill on your system.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-github-username/quill.git
-cd quill
+git clone https://github.com/inklang/ainscript.git
+cd ainscript
 ```
 
 ### 2. Build with Gradle

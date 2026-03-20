@@ -31,13 +31,17 @@ Text values enclosed in double quotes:
 
 ```quill
 let greeting = "Hello, World!"
-let name = "quill"
+let name = "Quill"
 
 // String concatenation
 let message = greeting + " Welcome to " + name
-print(message)  // Hello, World! Welcome to quill
+print(message)  // Hello, World! Welcome to Quill
 
-// String length (if supported)
+// String interpolation
+let interpolated = "Hello ${name}!"
+print(interpolated)  // Hello Quill!
+
+// String length
 let len = len(greeting)
 ```
 
@@ -101,10 +105,37 @@ print(user["name"])  // John
 Check the type of a value:
 
 ```quill
-print(type(42))       // "number"
-print(type("hello"))  // "string"
-print(type(true))     // "boolean"
-print(type(null))     // "null"
+print(type(42))       // "int"
+print(type("hello"))   // "string"
+print(type(true))      // "bool"
+print(type(null))      // "null"
+```
+
+## Type Checking with `is`
+
+Check if a value is a specific type:
+
+```quill
+let x = "hello"
+if x is string {
+    print("x is a string")
+}
+
+let num = 42
+if num is int {
+    print("num is an integer")
+}
+```
+
+## Range Expressions
+
+Create ranges for iteration:
+
+```quill
+let r = 0..5          // 0, 1, 2, 3, 4 (excludes end)
+for i in r {
+    print(i)
+}
 ```
 
 ## Next Steps

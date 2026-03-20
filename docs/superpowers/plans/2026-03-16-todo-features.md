@@ -199,7 +199,7 @@ git commit -m "feat: add Builtins.MapClass with native methods"
 ### Task 3: Migrate VM from Value.List to Builtins.ArrayClass
 
 **Files:**
-- Modify: `src/main/kotlin/org/quill/ast/VM.kt` (file is at `src/main/kotlin/org/quill/ast/VM.kt` but package is `org.quill.lang`)
+- Modify: `src/main/kotlin/org/quill/ast/VM.kt` (file is at `src/main/kotlin/org/quill/ast/VM.kt` but package is `org.inklang.lang`)
 
 - [ ] **Step 1: Register built-in classes as globals in VM**
 
@@ -369,7 +369,7 @@ fun testTernaryWithExpression() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "org.quill.ast.VMTest.testTernaryTrue"`
+Run: `./gradlew test --tests "org.inklang.ast.VMTest.testTernaryTrue"`
 Expected: FAIL — lexer doesn't recognize `?`
 
 - [ ] **Step 3: Add QUESTION to TokenType**
@@ -448,7 +448,7 @@ is Expr.TernaryExpr -> {
 
 - [ ] **Step 3: Run ternary tests**
 
-Run: `./gradlew test --tests "org.quill.ast.VMTest.testTernary*"`
+Run: `./gradlew test --tests "org.inklang.ast.VMTest.testTernary*"`
 Expected: PASS. **If tests fail due to the known SSA round-trip bug with control flow** (ternary desugars to JumpIfFalse/Jump/Label, same pattern as if-else which is `@Ignore`d), add `@Ignore("SSA round-trip bug with control flow")` to the failing tests and proceed. The ternary lowering itself is correct — the SSA bug is a pre-existing issue.
 
 - [ ] **Step 4: Run all tests**
@@ -499,7 +499,7 @@ fun testMapSize() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "org.quill.ast.VMTest.testMapLiteral"`
+Run: `./gradlew test --tests "org.inklang.ast.VMTest.testMapLiteral"`
 Expected: FAIL — parser doesn't handle map syntax
 
 - [ ] **Step 2.5: Remove `isNotEmpty()` constraint from MapExpr**
@@ -570,7 +570,7 @@ is Expr.MapExpr -> {
 
 - [ ] **Step 2: Run map tests**
 
-Run: `./gradlew test --tests "org.quill.ast.VMTest.testMap*"`
+Run: `./gradlew test --tests "org.inklang.ast.VMTest.testMap*"`
 Expected: PASS
 
 - [ ] **Step 3: Run all tests**
@@ -629,7 +629,7 @@ fun testLambdaAsArgument() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `./gradlew test --tests "org.quill.ast.VMTest.testLambdaBasic"`
+Run: `./gradlew test --tests "org.inklang.ast.VMTest.testLambdaBasic"`
 Expected: FAIL
 
 - [ ] **Step 3: Add lambda parsing**
@@ -744,7 +744,7 @@ is Expr.LambdaExpr -> {
 
 - [ ] **Step 3: Run lambda tests**
 
-Run: `./gradlew test --tests "org.quill.ast.VMTest.testLambda*"`
+Run: `./gradlew test --tests "org.inklang.ast.VMTest.testLambda*"`
 Expected: PASS
 
 - [ ] **Step 4: Run all tests**
@@ -862,7 +862,7 @@ In `VM.kt`, add to the globals map:
 
 - [ ] **Step 5: Run enum tests**
 
-Run: `./gradlew test --tests "org.quill.ast.VMTest.testEnum*"`
+Run: `./gradlew test --tests "org.inklang.ast.VMTest.testEnum*"`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -1066,7 +1066,7 @@ implementation("org.xerial:sqlite-jdbc:3.45.1.0")
 - [ ] **Step 2: Create TableRuntime.kt**
 
 ```kotlin
-package org.quill.lang
+package org.inklang.lang
 
 import java.sql.Connection
 import java.sql.DriverManager
@@ -1304,7 +1304,7 @@ OpCode.SET_FIELD -> {
 - [ ] **Step 4: Create ConfigRuntime.kt**
 
 ```kotlin
-package org.quill.lang
+package org.inklang.lang
 
 import org.yaml.snakeyaml.Yaml
 import java.io.File
@@ -1427,14 +1427,14 @@ git commit -m "feat: add config statement with YAML loading and read-only enforc
 - [ ] **Step 1: Create ModuleLoader.kt**
 
 ```kotlin
-package org.quill.lang
+package org.inklang.lang
 
-import org.quill.ast.AstLowerer
-import org.quill.ast.ConstantFolder
-import org.quill.ast.LivenessAnalyzer
-import org.quill.ast.RegisterAllocator
-import org.quill.ssa.SsaBuilder
-import org.quill.ssa.SsaDeconstructor
+import org.inklang.ast.AstLowerer
+import org.inklang.ast.ConstantFolder
+import org.inklang.ast.LivenessAnalyzer
+import org.inklang.ast.RegisterAllocator
+import org.inklang.ssa.SsaBuilder
+import org.inklang.ssa.SsaDeconstructor
 import java.io.File
 
 object ModuleLoader {

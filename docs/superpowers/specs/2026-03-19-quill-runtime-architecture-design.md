@@ -62,7 +62,7 @@ Paper plugin that depends on `quill-core` and Paper API. Provides `QuillContextI
 ## QuillContext Interface
 
 ```kotlin
-package org.quill
+package org.inklang
 
 interface QuillContext {
     /** Info-level log output to server console */
@@ -100,7 +100,7 @@ Scripts are identified by a `name` (derived from filename). Multiple named scrip
 ## QuillCompiler API
 
 ```kotlin
-package org.quill
+package org.inklang
 
 class QuillCompiler {
     /** Compile Quill source code to a CompiledScript */
@@ -227,7 +227,7 @@ MockBukkit tests that:
 |------|-----|
 | `lectern/` root | `quill/` root |
 | `lectern-core/` | `quill-core/` |
-| `org.lectern` package | `org.quill` package |
+| `org.lectern` package | `org.inklang` package |
 | `.lec` file extension | `.quill` file extension (both supported during transition) |
 | `lectern-paper/` (new) | `quill-paper/` (new) |
 

@@ -203,7 +203,7 @@ Add to `src/test/kotlin/org/quill/lang/ParserTest.kt`:
 - [ ] **Step 4: Run parser tests**
 
 ```
-./gradlew test --tests "org.quill.lang.ParserTest.testHasExpression" --tests "org.quill.lang.ParserTest.testHasPrecedence"
+./gradlew test --tests "org.inklang.lang.ParserTest.testHasExpression" --tests "org.inklang.lang.ParserTest.testHasPrecedence"
 ```
 Expected: both PASS
 
@@ -507,7 +507,7 @@ Add to `src/test/kotlin/org/quill/ast/VMTest.kt` (inside the `VMTest` class):
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```
-./gradlew test --tests "org.quill.ast.VMTest.testHasBasic" --tests "org.quill.ast.VMTest.testHasMap" --tests "org.quill.ast.VMTest.testHasDynamicField" --tests "org.quill.ast.VMTest.testHasArrayReturnsFalse" --tests "org.quill.ast.VMTest.testHasNonObjectReturnsFalse"
+./gradlew test --tests "org.inklang.ast.VMTest.testHasBasic" --tests "org.inklang.ast.VMTest.testHasMap" --tests "org.inklang.ast.VMTest.testHasDynamicField" --tests "org.inklang.ast.VMTest.testHasArrayReturnsFalse" --tests "org.inklang.ast.VMTest.testHasNonObjectReturnsFalse"
 ```
 Expected: all FAIL with compile errors (HasExpr/HasCheck not yet wired everywhere) or test failures
 

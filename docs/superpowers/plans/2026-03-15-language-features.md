@@ -104,15 +104,15 @@ Create a single test file with a `runScript()` helper that drives the full pipel
 - [ ] **Step 1: Write the test file**
 
 ```kotlin
-package org.quill.lang
+package org.inklang.lang
 
-// Note: IrCompiler and VM are declared in `package org.quill.lang` (despite living
+// Note: IrCompiler and VM are declared in `package org.inklang.lang` (despite living
 // in the ast/ directory), so they are in the same package as this test — no import needed.
-import org.quill.ast.AstLowerer
-import org.quill.ast.ConstantFolder
-import org.quill.ast.LivenessAnalyzer
-import org.quill.ast.RegisterAllocator
-import org.quill.rewrite
+import org.inklang.ast.AstLowerer
+import org.inklang.ast.ConstantFolder
+import org.inklang.ast.LivenessAnalyzer
+import org.inklang.ast.RegisterAllocator
+import org.inklang.rewrite
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -150,7 +150,7 @@ class quillTest {
 - [ ] **Step 2: Run the smoke test**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testSmokeTest"
+./gradlew test --tests "org.inklang.lang.quillTest.testSmokeTest"
 ```
 Expected: PASS
 
@@ -203,7 +203,7 @@ fun testTernaryRightAssociative() {
 - [ ] **Step 2: Run to see tests fail**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testTernaryTrue"
+./gradlew test --tests "org.inklang.lang.quillTest.testTernaryTrue"
 ```
 Expected: FAIL — parse error (QUESTION_MARK not a known token)
 
@@ -313,7 +313,7 @@ is Expr.TernaryExpr -> {
 - [ ] **Step 7: Run ternary tests**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testTernary*"
+./gradlew test --tests "org.inklang.lang.quillTest.testTernary*"
 ```
 Expected: 3 PASS
 
@@ -384,7 +384,7 @@ fun testMapMissingKeyReturnsNull() {
 - [ ] **Step 2: Run to see tests fail**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testMapLiteralGetIndex"
+./gradlew test --tests "org.inklang.lang.quillTest.testMapLiteralGetIndex"
 ```
 Expected: FAIL — parse error (`{` not handled in prefix)
 
@@ -547,7 +547,7 @@ OpCode.SET_INDEX -> {
 - [ ] **Step 11: Run map tests**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testMap*"
+./gradlew test --tests "org.inklang.lang.quillTest.testMap*"
 ```
 Expected: 3 PASS
 
@@ -625,7 +625,7 @@ fun testEnumIdentity() {
 - [ ] **Step 2: Run to see tests fail**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testEnumVariantAccess"
+./gradlew test --tests "org.inklang.lang.quillTest.testEnumVariantAccess"
 ```
 Expected: FAIL — `EnumStmt` lowering is a TODO
 
@@ -751,7 +751,7 @@ OpCode.GET_FIELD -> {
 - [ ] **Step 11: Run enum tests**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testEnum*"
+./gradlew test --tests "org.inklang.lang.quillTest.testEnum*"
 ```
 Expected: 2 PASS
 
@@ -851,7 +851,7 @@ fun testLambdaMutatesCapture() {
 - [ ] **Step 2: Run to see tests fail**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testLambdaBasic"
+./gradlew test --tests "org.inklang.lang.quillTest.testLambdaBasic"
 ```
 Expected: FAIL — `LambdaExpr` lowering is a TODO
 
@@ -1201,7 +1201,7 @@ is Value.Closure -> {
 - [ ] **Step 12: Run lambda tests**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testLambda*"
+./gradlew test --tests "org.inklang.lang.quillTest.testLambda*"
 ```
 Expected: 4 PASS
 
@@ -1300,7 +1300,7 @@ fun testFromImport() {
 - [ ] **Step 2: Run to see tests fail**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testImportModule"
+./gradlew test --tests "org.inklang.lang.quillTest.testImportModule"
 ```
 Expected: FAIL — `ImportStmt` lowering is a TODO
 
@@ -1440,11 +1440,11 @@ OpCode.IMPORT -> {
         val source = java.io.File("$path.quill").readText()
         val tokens = tokenize(source)
         val stmts = Parser(tokens).parse()
-        val folded = stmts.map { org.quill.ast.ConstantFolder().foldStmt(it) }
-        val result = org.quill.ast.AstLowerer().lower(folded)
-        val ranges = org.quill.ast.LivenessAnalyzer().analyze(result.instrs)
-        val allocation = org.quill.ast.RegisterAllocator().allocate(ranges)
-        val rewritten = org.quill.rewrite(result.instrs, allocation)
+        val folded = stmts.map { org.inklang.ast.ConstantFolder().foldStmt(it) }
+        val result = org.inklang.ast.AstLowerer().lower(folded)
+        val ranges = org.inklang.ast.LivenessAnalyzer().analyze(result.instrs)
+        val allocation = org.inklang.ast.RegisterAllocator().allocate(ranges)
+        val rewritten = org.inklang.rewrite(result.instrs, allocation)
         val chunk = IrCompiler().compile(AstLowerer.LoweredResult(rewritten, result.constants))
         val moduleVm = VM()
         // Share builtins with the module VM
@@ -1494,20 +1494,20 @@ OpCode.GET_FIELD -> {
 }
 ```
 
-The `IMPORT` handler uses classes from other packages. Add any missing imports at the top of `VM.kt`. Note that `IrCompiler` and `VM` are already in `package org.quill.lang` (same package as `VM.kt`), so no import is needed for `IrCompiler`. The ones that do need importing (if not already present):
+The `IMPORT` handler uses classes from other packages. Add any missing imports at the top of `VM.kt`. Note that `IrCompiler` and `VM` are already in `package org.inklang.lang` (same package as `VM.kt`), so no import is needed for `IrCompiler`. The ones that do need importing (if not already present):
 ```kotlin
-import org.quill.ast.AstLowerer
-import org.quill.ast.ConstantFolder
-import org.quill.ast.LivenessAnalyzer
-import org.quill.ast.RegisterAllocator
-import org.quill.rewrite
-// Parser and tokenize are in org.quill.lang — same package, no import needed
+import org.inklang.ast.AstLowerer
+import org.inklang.ast.ConstantFolder
+import org.inklang.ast.LivenessAnalyzer
+import org.inklang.ast.RegisterAllocator
+import org.inklang.rewrite
+// Parser and tokenize are in org.inklang.lang — same package, no import needed
 ```
 
 - [ ] **Step 13: Run import tests**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testImport*"
+./gradlew test --tests "org.inklang.lang.quillTest.testImport*"
 ```
 Expected: 2 PASS
 
@@ -1614,7 +1614,7 @@ fun testConfigReadsExistingFile() {
 - [ ] **Step 2: Run to see tests fail**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testConfigCreatesFileWithDefaults"
+./gradlew test --tests "org.inklang.lang.quillTest.testConfigCreatesFileWithDefaults"
 ```
 Expected: FAIL — `KW_CONFIG` not a known token
 
@@ -1904,7 +1904,7 @@ OpCode.LOAD_CONFIG -> {
 - [ ] **Step 16: Run config tests**
 
 ```bash
-./gradlew test --tests "org.quill.lang.quillTest.testConfig*"
+./gradlew test --tests "org.inklang.lang.quillTest.testConfig*"
 ```
 Expected: 2 PASS
 

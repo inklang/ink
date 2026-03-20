@@ -109,7 +109,7 @@
   Replace the entire file contents:
 
   ```kotlin
-  package org.quill.ast
+  package org.inklang.ast
 
   class RegisterAllocator(private val numRegs: Int = 16) {
 
@@ -254,10 +254,10 @@
   Create `src/test/kotlin/org/quill/ast/SpillInserterTest.kt`:
 
   ```kotlin
-  package org.quill.ast
+  package org.inklang.ast
 
-  import org.quill.lang.IrInstr
-  import org.quill.lang.TokenType
+  import org.inklang.lang.IrInstr
+  import org.inklang.lang.TokenType
   import kotlin.test.Test
   import kotlin.test.assertEquals
   import kotlin.test.assertFailsWith
@@ -378,7 +378,7 @@
 - [ ] **Step 2: Run test to verify it fails**
 
   ```
-  ./gradlew test --tests "org.quill.ast.SpillInserterTest"
+  ./gradlew test --tests "org.inklang.ast.SpillInserterTest"
   ```
   Expected: FAIL — `SpillInserter` class does not exist yet.
 
@@ -387,9 +387,9 @@
   Create `src/main/kotlin/org/quill/ast/SpillInserter.kt`:
 
   ```kotlin
-  package org.quill.ast
+  package org.inklang.ast
 
-  import org.quill.lang.IrInstr
+  import org.inklang.lang.IrInstr
 
   /**
    * Resolves all virtual registers to physical registers, injecting Spill/Unspill
@@ -510,7 +510,7 @@
 - [ ] **Step 4: Run tests to verify they pass**
 
   ```
-  ./gradlew test --tests "org.quill.ast.SpillInserterTest"
+  ./gradlew test --tests "org.inklang.ast.SpillInserterTest"
   ```
   Expected: All 3 tests PASS.
 
@@ -612,7 +612,7 @@
   Add to the imports at the top:
 
   ```kotlin
-  import org.quill.ast.SpillInserter
+  import org.inklang.ast.SpillInserter
   ```
 
 - [ ] **Step 3: Replace `LoadFunc` sub-pipeline to use `SpillInserter`**
@@ -699,7 +699,7 @@
 
   Also add the import at the top of `Main.kt`:
   ```kotlin
-  import org.quill.ast.SpillInserter
+  import org.inklang.ast.SpillInserter
   ```
 
 - [ ] **Step 8: Delete `rewrite()` from `Main.kt` and remove its unused import**
@@ -708,7 +708,7 @@
 
   Also remove the now-orphaned import on line 10. `rewrite()` is the only place in `Main.kt` that names `IrInstr` explicitly; `main()` only uses it via type inference (no explicit annotation). After deletion the import is unused and the compiler will emit a warning:
   ```kotlin
-  import org.quill.lang.IrInstr
+  import org.inklang.lang.IrInstr
   ```
 
 - [ ] **Step 9: Verify the full test suite passes**
@@ -742,11 +742,11 @@ These tests compile and execute real quill programs that exercise spilling throu
   Create `src/test/kotlin/org/quill/ast/RegisterSpillTest.kt`:
 
   ```kotlin
-  package org.quill.ast
+  package org.inklang.ast
 
-  import org.quill.lang.*
-  import org.quill.ssa.SsaBuilder
-  import org.quill.ssa.SsaDeconstructor
+  import org.inklang.lang.*
+  import org.inklang.ssa.SsaBuilder
+  import org.inklang.ssa.SsaDeconstructor
   import kotlin.test.Test
   import kotlin.test.assertEquals
   import kotlin.test.assertFailsWith
@@ -897,7 +897,7 @@ These tests compile and execute real quill programs that exercise spilling throu
 - [ ] **Step 2: Run tests to verify they fail (or pass — both outcomes are acceptable)**
 
   ```
-  ./gradlew test --tests "org.quill.ast.RegisterSpillTest"
+  ./gradlew test --tests "org.inklang.ast.RegisterSpillTest"
   ```
 
   If they already pass (because the pipeline now handles spilling): proceed to Step 4.

@@ -63,7 +63,7 @@ fun testSsaDeconstructorUniqueRegisters() {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `./gradlew test --tests "org.quill.ssa.SsaTest.testSsaDeconstructorUniqueRegisters"`
+Run: `./gradlew test --tests "org.inklang.ssa.SsaTest.testSsaDeconstructorUniqueRegisters"`
 Expected: FAIL — current code assigns all versions of base register 0 to the same physical register
 
 - [ ] **Step 3: Fix `assignRegisters()` in `SsaDeconstructor.kt`**
@@ -100,12 +100,12 @@ private fun assignRegisters() {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `./gradlew test --tests "org.quill.ssa.SsaTest.testSsaDeconstructorUniqueRegisters"`
+Run: `./gradlew test --tests "org.inklang.ssa.SsaTest.testSsaDeconstructorUniqueRegisters"`
 Expected: PASS
 
 - [ ] **Step 5: Run all existing SSA tests to check for regressions**
 
-Run: `./gradlew test --tests "org.quill.ssa.SsaTest"`
+Run: `./gradlew test --tests "org.inklang.ssa.SsaTest"`
 Expected: All pass (the simple roundtrip test may need adjustment since register numbers change)
 
 - [ ] **Step 6: Commit**
@@ -170,7 +170,7 @@ fun testSsaDeconstructorPhiMultiplePredecessors() {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `./gradlew test --tests "org.quill.ssa.SsaTest.testSsaDeconstructorPhiMultiplePredecessors"`
+Run: `./gradlew test --tests "org.inklang.ssa.SsaTest.testSsaDeconstructorPhiMultiplePredecessors"`
 Expected: FAIL — current code picks first non-undefined operand instead of inserting per-predecessor copies
 
 - [ ] **Step 3: Rewrite `convertPhis()` and restructure `deconstruct()`**
@@ -368,12 +368,12 @@ Also remove the old `convertPhis()` method entirely — it's replaced by `resolv
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `./gradlew test --tests "org.quill.ssa.SsaTest.testSsaDeconstructorPhiMultiplePredecessors"`
+Run: `./gradlew test --tests "org.inklang.ssa.SsaTest.testSsaDeconstructorPhiMultiplePredecessors"`
 Expected: PASS
 
 - [ ] **Step 5: Run all SSA tests**
 
-Run: `./gradlew test --tests "org.quill.ssa.SsaTest"`
+Run: `./gradlew test --tests "org.inklang.ssa.SsaTest"`
 Expected: All pass
 
 - [ ] **Step 6: Commit**
@@ -397,8 +397,8 @@ git commit -m "fix: proper phi resolution with predecessor copies in SsaDeconstr
 In `Main.kt`, add imports:
 
 ```kotlin
-import org.quill.ssa.SsaBuilder
-import org.quill.ssa.SsaDeconstructor
+import org.inklang.ssa.SsaBuilder
+import org.inklang.ssa.SsaDeconstructor
 ```
 
 After the `AstLowerer().lower(folded)` call and before `LivenessAnalyzer().analyze()`, insert the SSA round-trip:
@@ -444,8 +444,8 @@ git commit -m "feat: wire SSA round-trip into main compilation pipeline"
 - [ ] **Step 1: Add SSA imports**
 
 ```kotlin
-import org.quill.ssa.SsaBuilder
-import org.quill.ssa.SsaDeconstructor
+import org.inklang.ssa.SsaBuilder
+import org.inklang.ssa.SsaDeconstructor
 ```
 
 - [ ] **Step 2: Add SSA round-trip before function body compilation**
@@ -509,7 +509,7 @@ git commit -m "feat: apply SSA round-trip to function and method bodies in IrCom
 - [ ] **Step 1: Write lexer tests**
 
 ```kotlin
-package org.quill.lang
+package org.inklang.lang
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -575,7 +575,7 @@ class LexerTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.lang.LexerTest"`
+Run: `./gradlew test --tests "org.inklang.lang.LexerTest"`
 Expected: All PASS. If any fail, adjust test expectations to match actual lexer behavior.
 
 - [ ] **Step 3: Commit**
@@ -595,7 +595,7 @@ git commit -m "test: add lexer unit tests"
 - [ ] **Step 1: Write parser tests**
 
 ```kotlin
-package org.quill.lang
+package org.inklang.lang
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -703,7 +703,7 @@ class ParserTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.lang.ParserTest"`
+Run: `./gradlew test --tests "org.inklang.lang.ParserTest"`
 Expected: All PASS. Adjust expectations if parser has different behavior.
 
 - [ ] **Step 3: Commit**
@@ -723,9 +723,9 @@ git commit -m "test: add parser unit tests"
 - [ ] **Step 1: Write constant folder tests**
 
 ```kotlin
-package org.quill.ast
+package org.inklang.ast
 
-import org.quill.lang.*
+import org.inklang.lang.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -784,7 +784,7 @@ class ConstantFolderTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.ast.ConstantFolderTest"`
+Run: `./gradlew test --tests "org.inklang.ast.ConstantFolderTest"`
 Expected: All PASS
 
 - [ ] **Step 3: Commit**
@@ -806,9 +806,9 @@ git commit -m "test: add constant folder unit tests"
 - [ ] **Step 1: Write AST lowerer tests**
 
 ```kotlin
-package org.quill.ast
+package org.inklang.ast
 
-import org.quill.lang.*
+import org.inklang.lang.*
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
@@ -879,7 +879,7 @@ class AstLowererTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.ast.AstLowererTest"`
+Run: `./gradlew test --tests "org.inklang.ast.AstLowererTest"`
 Expected: All PASS
 
 - [ ] **Step 3: Commit**
@@ -899,14 +899,14 @@ git commit -m "test: add AST lowerer unit tests"
 - [ ] **Step 1: Write SSA round-trip tests**
 
 ```kotlin
-package org.quill.ssa
+package org.inklang.ssa
 
-import org.quill.ast.AstLowerer
-import org.quill.ast.ConstantFolder
-import org.quill.ast.LivenessAnalyzer
-import org.quill.ast.RegisterAllocator
-import org.quill.lang.*
-import org.quill.rewrite
+import org.inklang.ast.AstLowerer
+import org.inklang.ast.ConstantFolder
+import org.inklang.ast.LivenessAnalyzer
+import org.inklang.ast.RegisterAllocator
+import org.inklang.lang.*
+import org.inklang.rewrite
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -1048,7 +1048,7 @@ class SsaRoundTripTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.ssa.SsaRoundTripTest"`
+Run: `./gradlew test --tests "org.inklang.ssa.SsaRoundTripTest"`
 Expected: All PASS. If any fail, this indicates an SSA round-trip correctness bug to fix.
 
 - [ ] **Step 3: Commit**
@@ -1068,9 +1068,9 @@ git commit -m "test: add SSA round-trip end-to-end tests"
 - [ ] **Step 1: Write liveness analyzer tests**
 
 ```kotlin
-package org.quill.ast
+package org.inklang.ast
 
-import org.quill.lang.*
+import org.inklang.lang.*
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
@@ -1125,7 +1125,7 @@ class LivenessAnalyzerTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.ast.LivenessAnalyzerTest"`
+Run: `./gradlew test --tests "org.inklang.ast.LivenessAnalyzerTest"`
 Expected: All PASS
 
 - [ ] **Step 3: Commit**
@@ -1145,9 +1145,9 @@ git commit -m "test: add liveness analyzer unit tests"
 - [ ] **Step 1: Write register allocator tests**
 
 ```kotlin
-package org.quill.ast
+package org.inklang.ast
 
-import org.quill.lang.*
+import org.inklang.lang.*
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
@@ -1194,7 +1194,7 @@ class RegisterAllocatorTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.ast.RegisterAllocatorTest"`
+Run: `./gradlew test --tests "org.inklang.ast.RegisterAllocatorTest"`
 Expected: All PASS
 
 - [ ] **Step 3: Commit**
@@ -1216,9 +1216,9 @@ git commit -m "test: add register allocator unit tests"
 - [ ] **Step 1: Write IrCompiler tests**
 
 ```kotlin
-package org.quill.ast
+package org.inklang.ast
 
-import org.quill.lang.*
+import org.inklang.lang.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -1292,7 +1292,7 @@ class IrCompilerTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.ast.IrCompilerTest"`
+Run: `./gradlew test --tests "org.inklang.ast.IrCompilerTest"`
 Expected: All PASS
 
 - [ ] **Step 3: Commit**
@@ -1312,10 +1312,10 @@ git commit -m "test: add IrCompiler unit tests"
 - [ ] **Step 1: Write VM end-to-end tests**
 
 ```kotlin
-package org.quill.ast
+package org.inklang.ast
 
-import org.quill.lang.*
-import org.quill.rewrite
+import org.inklang.lang.*
+import org.inklang.rewrite
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -1457,7 +1457,7 @@ class VMTest {
 
 - [ ] **Step 2: Run tests**
 
-Run: `./gradlew test --tests "org.quill.ast.VMTest"`
+Run: `./gradlew test --tests "org.inklang.ast.VMTest"`
 Expected: All PASS. Fix any test expectations that don't match VM output format.
 
 - [ ] **Step 3: Commit**

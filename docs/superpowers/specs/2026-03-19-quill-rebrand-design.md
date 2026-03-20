@@ -17,13 +17,13 @@ Rename the Lectern programming language to Quill. The change is purely cosmetic 
 **1,107 occurrences across 103 files.**
 
 ### Package Names
-- `org.lectern` → `org.quill`
+- `org.lectern` → `org.inklang`
 - All Kotlin source and test files in `src/main/kotlin/org/lectern/` → `src/main/kotlin/org/quill/`
 - All Kotlin test files in `src/test/kotlin/org/lectern/` → `src/test/kotlin/org/quill/`
 
 ### Project Name
 - Root project name: `lectern` → `quill` (in `settings.gradle.kts` and `build.gradle.kts`)
-- Group ID: `org.lectern` → `org.quill`
+- Group ID: `org.lectern` → `org.inklang`
 
 ### File Extension
 - `.lec` → `.quill`
@@ -56,7 +56,7 @@ Rename the Lectern programming language to Quill. The change is purely cosmetic 
 4. Update `lectern-intellij/settings.gradle.kts` → `quill-intellij/settings.gradle.kts`
 
 ### Phase 3: Global replacement in all files
-1. Replace `org.lectern` → `org.quill` in all Kotlin files
+1. Replace `org.lectern` → `org.inklang` in all Kotlin files
 2. Replace `lectern` → `quill` in all remaining files (docs, configs, etc.)
 3. Replace `Lectern` → `Quill` in documentation and comments
 4. Replace `LECTERN` → `QUILL` in any constant names

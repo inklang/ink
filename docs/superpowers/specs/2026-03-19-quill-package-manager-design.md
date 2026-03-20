@@ -10,7 +10,7 @@ The entire project is being renamed from `lectern` to `quill`:
 
 | Before | After |
 |--------|-------|
-| `org.lectern` (Kotlin package) | `org.quill` |
+| `org.lectern` (Kotlin package) | `org.inklang` |
 | `lectern-intellij/` | `quill-intellij/` |
 | `lectern-vscode/` | `quill-vscode/` |
 | `.lec` / `.ain` (source files) | `.quill` |
@@ -254,7 +254,7 @@ quill/                              ← project root (was lectern/)
 ## Implementation Phases
 
 ### Phase 1: Full Rename + Project Scaffolding
-- Rename `org.lectern` → `org.quill` in all Kotlin sources
+- Rename `org.lectern` → `org.inklang` in all Kotlin sources
 - Rename `lectern-intellij/` → `quill-intellij/`
 - Rename `lectern-vscode/` → `quill-vscode/`
 - Rename all `.lec` / `.ain` files → `.quill`

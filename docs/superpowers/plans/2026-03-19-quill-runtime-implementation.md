@@ -44,7 +44,7 @@ plugins {
     kotlin("jvm")
 }
 
-group = "org.quill"
+group = "org.inklang"
 version = rootProject.version
 
 kotlin {
@@ -71,7 +71,7 @@ plugins {
     kotlin("jvm")
 }
 
-group = "org.quill"
+group = "org.inklang"
 version = rootProject.version
 
 kotlin {
@@ -101,7 +101,7 @@ tasks.test {
 ```yaml
 name: Quill
 version: 1.0-SNAPSHOT
-main: org.quill.paper.QuillPlugin
+main: org.inklang.paper.QuillPlugin
 api-version: '1.21'
 ```
 
@@ -191,7 +191,7 @@ git commit -m "feat: split into quill-core and quill-paper Gradle modules"
 Create `quill-core/src/test/kotlin/org/quill/QuillCompilerTest.kt`:
 
 ```kotlin
-package org.quill
+package org.inklang
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
@@ -240,7 +240,7 @@ class FakeQuillContext : QuillContext {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-./gradlew :quill-core:test --tests "org.quill.QuillCompilerTest" 2>&1 | tail -20
+./gradlew :quill-core:test --tests "org.inklang.QuillCompilerTest" 2>&1 | tail -20
 ```
 
 Expected: FAIL — `QuillCompiler` class does not exist
@@ -248,7 +248,7 @@ Expected: FAIL — `QuillCompiler` class does not exist
 - [ ] **Step 3: Create `QuillContext.kt`**
 
 ```kotlin
-package org.quill
+package org.inklang
 
 /**
  * Interface provided by the runtime host to scripts.
@@ -266,9 +266,9 @@ interface QuillContext {
 - [ ] **Step 4: Create `CompiledScript.kt`**
 
 ```kotlin
-package org.quill
+package org.inklang
 
-import org.quill.lang.Chunk
+import org.inklang.lang.Chunk
 
 /**
  * A compiled Quill script, ready for execution.
@@ -277,7 +277,7 @@ import org.quill.lang.Chunk
 class CompiledScript(
     val name: String,
     private val chunk: Chunk,
-    private val constants: List<org.quill.lang.Value>
+    private val constants: List<org.inklang.lang.Value>
 ) {
     /** Maximum instructions before timeout (default 10M). Set by ScriptManager. */
     var instructionLimit: Long = 10_000_000L
@@ -288,7 +288,7 @@ class CompiledScript(
      * The host should wrap this in a try-catch and format errors for the user.
      */
     fun execute(context: QuillContext) {
-        val vm = org.quill.lang.VM(context)
+        val vm = org.inklang.lang.VM(context)
         vm.instructionLimit = instructionLimit
         vm.execute(chunk)
     }
@@ -298,17 +298,17 @@ class CompiledScript(
 - [ ] **Step 5: Create `QuillCompiler.kt`**
 
 ```kotlin
-package org.quill
+package org.inklang
 
-import org.quill.ast.AstLowerer
-import org.quill.ast.ConstantFolder
-import org.quill.lang.IrCompiler
-import org.quill.lang.LivenessAnalyzer
-import org.quill.lang.Parser
-import org.quill.lang.RegisterAllocator
-import org.quill.lang.SpillInserter
-import org.quill.lang.Value
-import org.quill.lang.tokenize
+import org.inklang.ast.AstLowerer
+import org.inklang.ast.ConstantFolder
+import org.inklang.lang.IrCompiler
+import org.inklang.lang.LivenessAnalyzer
+import org.inklang.lang.Parser
+import org.inklang.lang.RegisterAllocator
+import org.inklang.lang.SpillInserter
+import org.inklang.lang.Value
+import org.inklang.lang.tokenize
 
 /**
  * Compiler for Quill source code.
@@ -385,7 +385,7 @@ val vm = VM(null)  // was VM()
 - [ ] **Step 7: Run tests to verify they pass**
 
 ```bash
-./gradlew :quill-core:test --tests "org.quill.QuillCompilerTest"
+./gradlew :quill-core:test --tests "org.inklang.QuillCompilerTest"
 ```
 
 Expected: all 4 PASS
@@ -432,7 +432,7 @@ fun testInfiniteLoopTimesOut() {
 - [ ] **Step 2: Run test to verify it fails (loop runs until process kill or timeout)**
 
 ```bash
-timeout 10 ./gradlew :quill-core:test --tests "org.quill.QuillCompilerTest.testInfiniteLoopTimesOut" 2>&1 | tail -10
+timeout 10 ./gradlew :quill-core:test --tests "org.inklang.QuillCompilerTest.testInfiniteLoopTimesOut" 2>&1 | tail -10
 ```
 
 Expected: test times out or runs indefinitely (this is expected failure — no timeout yet)
@@ -480,7 +480,7 @@ Update `CompiledScript.execute()` to accept an optional `instructionLimit` param
 
 ```kotlin
 fun execute(context: QuillContext, instructionLimit: Long = 10_000_000L) {
-    val vm = org.quill.lang.VM(context)
+    val vm = org.inklang.lang.VM(context)
     vm.instructionLimit = instructionLimit
     vm.execute(chunk)
 }
@@ -489,7 +489,7 @@ fun execute(context: QuillContext, instructionLimit: Long = 10_000_000L) {
 - [ ] **Step 5: Run the timeout test**
 
 ```bash
-./gradlew :quill-core:test --tests "org.quill.QuillCompilerTest.testInfiniteLoopTimesOut"
+./gradlew :quill-core:test --tests "org.inklang.QuillCompilerTest.testInfiniteLoopTimesOut"
 ```
 
 Expected: PASS (test should throw within ~1 second due to instruction limit)
@@ -525,7 +525,7 @@ git commit -m "feat: add instruction counter timeout to VM"
 - [ ] **Step 1: Create `QuillPlugin.kt`**
 
 ```kotlin
-package org.quill.paper
+package org.inklang.paper
 
 import org.bukkit.command.CommandSender
 import org.bukkit.plugin.java.JavaPlugin
@@ -580,11 +580,11 @@ class QuillPlugin : JavaPlugin() {
 - [ ] **Step 2: Create `QuillContextImpl.kt`**
 
 ```kotlin
-package org.quill.paper
+package org.inklang.paper
 
 import org.bukkit.command.CommandSender
 import org.bukkit.Server
-import org.quill.QuillContext
+import org.inklang.QuillContext
 
 class QuillContextImpl(
     private val sender: CommandSender,
@@ -607,11 +607,11 @@ class QuillContextImpl(
 - [ ] **Step 3: Create `ScriptManager.kt`**
 
 ```kotlin
-package org.quill.paper
+package org.inklang.paper
 
-import org.quill.QuillCompiler
-import org.quill.QuillContext
-import org.quill.CompiledScript
+import org.inklang.QuillCompiler
+import org.inklang.QuillContext
+import org.inklang.CompiledScript
 import java.io.File
 
 class ScriptManager(
@@ -694,7 +694,7 @@ class ScriptManager(
 - [ ] **Step 4: Create `QuillCommandExecutor.kt`**
 
 ```kotlin
-package org.quill.paper
+package org.inklang.paper
 
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
@@ -779,7 +779,7 @@ class QuillCommandExecutor(private val plugin: QuillPlugin) : CommandExecutor {
 - [ ] **Step 5: Create `QuillTabCompleter.kt`**
 
 ```kotlin
-package org.quill.paper
+package org.inklang.paper
 
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
@@ -815,7 +815,7 @@ class QuillTabCompleter : TabCompleter {
 - [ ] **Step 6: Create stub `ScriptEventListener.kt`**
 
 ```kotlin
-package org.quill.paper
+package org.inklang.paper
 
 import org.bukkit.event.Listener
 
@@ -875,7 +875,7 @@ git commit -m "feat: add QuillPlugin, QuillContextImpl, ScriptManager, and comma
 Create `quill-paper/src/test/kotlin/org/quill/paper/QuillPluginTest.kt`:
 
 ```kotlin
-package org.quill.paper
+package org.inklang.paper
 
 import be.seeseemelk.mockbukkit.MockBukkit
 import be.seeseemelk.mockbukkit.ServerMock
@@ -934,7 +934,7 @@ class QuillPluginTest {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-./gradlew :quill-paper:test --tests "org.quill.paper.QuillPluginTest" 2>&1 | tail -20
+./gradlew :quill-paper:test --tests "org.inklang.paper.QuillPluginTest" 2>&1 | tail -20
 ```
 
 Expected: FAIL — likely compilation errors or MockBukkit setup issues

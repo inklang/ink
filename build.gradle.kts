@@ -3,7 +3,7 @@ plugins {
 }
 
 allprojects {
-    group = "org.quill"
+    group = "org.inklang"
     version = "1.0-SNAPSHOT"
 
     repositories {

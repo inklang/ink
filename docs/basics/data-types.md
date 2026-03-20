@@ -4,15 +4,13 @@ sidebar_position: 2
 
 # Data Types
 
-Explore the data types available in quill.
+ink has several built-in data types for storing different kinds of values.
 
-## Primitive Types
+## Numbers
 
-### Numbers
+ink uses a single number type for integers and decimals:
 
-quill uses a single number type for integers and decimals:
-
-```quill
+```ink
 let integer = 42
 let decimal = 3.14159
 let negative = -100
@@ -22,101 +20,169 @@ print(10 + 5)   // 15
 print(10 - 5)   // 5
 print(10 * 5)   // 50
 print(10 / 5)   // 2
-print(10 % 3)   // 1 (modulo)
+print(10 % 3)   // 1 (modulo - remainder after division)
 ```
 
-### Strings
+## Strings
 
 Text values enclosed in double quotes:
 
-```quill
-let greeting = "Hello, World!"
-let name = "Quill"
+```ink
+let greeting = "Hello"
+let name = "World"
 
-// String concatenation
-let message = greeting + " Welcome to " + name
-print(message)  // Hello, World! Welcome to Quill
+// Concatenation with +
+let message = greeting + ", " + name + "!"
+print(message)  // Hello, World!
 
-// String interpolation
+// String interpolation - embed expressions in strings
 let interpolated = "Hello ${name}!"
-print(interpolated)  // Hello Quill!
+print(interpolated)  // Hello World!
 
-// String length
-let len = len(greeting)
+// String methods
+let text = "  Hello  "
+print(text.trim())           // "Hello" (removes whitespace)
+print(text.toUpperCase())    // "  HELLO  "
+print("hello".contains("ell"))  // true
+print("hello".length())      // 5
 ```
 
-### Booleans
+### String Methods
 
-True or false values:
+Strings have useful built-in methods:
 
-```quill
+```ink
+let s = "Hello World"
+
+// Length
+s.length()        // 11
+
+// Case conversion
+s.toUpperCase()   // "HELLO WORLD"
+s.toLowerCase()   // "hello world"
+
+// Search
+s.contains("World")  // true
+s.startsWith("Hello") // true
+s.endsWith("World")  // true
+s.indexOf("World")   // 6
+
+// Split
+let parts = "a,b,c".split(",")
+print(parts.size())  // 3
+
+// Check
+"".isEmpty()   // true
+"   ".isBlank()  // true
+```
+
+## Booleans
+
+True or false values for logical operations:
+
+```ink
 let isActive = true
 let isComplete = false
 
-// Boolean operations
-print(!isActive)       // false
-print(isActive && isComplete)  // false
-print(isActive || isComplete)  // true
+// Negation
+print(!isActive)        // false
+
+// And - both must be true
+print(true and false)   // false
+print(true and true)    // true
+
+// Or - at least one must be true
+print(true or false)    // true
+print(false or false)   // false
 ```
 
-### Null
+## Null
 
 Represents the absence of a value:
 
-```quill
+```ink
 let empty = null
 print(empty)  // null
+
+// Check for null
+if empty == null {
+    print("It's null!")
+}
 ```
 
-## Composite Types
-
-### Arrays
+## Arrays
 
 Ordered collections of values:
 
-```quill
+```ink
 let numbers = [1, 2, 3, 4, 5]
 let mixed = [1, "two", true]
 
-// Access elements
+// Access elements (0-indexed)
 print(numbers[0])  // 1
+print(numbers[2])  // 3
 
 // Modify elements
 numbers[0] = 10
+
+// Array size
+print(numbers.size())  // 5
+
+// Add elements
+numbers.push(6)
+
+// Iterate
+for num in numbers {
+    print(num)
+}
 ```
 
-### Maps (Dictionaries)
+## Maps
 
-Key-value pairs:
+Key-value pairs for storing named data:
 
-```quill
-let user = {
-    "name": "John",
-    "age": 30,
-    "active": true
-}
+```ink
+let user = Map()
+user.set("name", "Alice")
+user.set("age", 30)
 
 // Access values
-print(user["name"])  // John
+print(user.get("name"))  // Alice
+
+// Check size
+print(user.size())  // 2
+
+// Get all keys or values
+let keys = user.keys()
+let values = user.values()
+
+// Delete
+user.delete("age")
+```
+
+## Ranges
+
+Create ranges for iteration:
+
+```ink
+// 0, 1, 2, 3, 4 (excludes end)
+for i in 0..5 {
+    print(i)
+}
+
+// Works with any numbers
+for n in 10..15 {
+    print(n)  // 10, 11, 12, 13, 14
+}
 ```
 
 ## Type Checking
 
-Check the type of a value:
-
-```quill
-print(type(42))       // "int"
-print(type("hello"))   // "string"
-print(type(true))      // "bool"
-print(type(null))      // "null"
-```
-
-## Type Checking with `is`
-
 Check if a value is a specific type:
 
-```quill
+```ink
 let x = "hello"
+
 if x is string {
     print("x is a string")
 }
@@ -127,17 +193,6 @@ if num is int {
 }
 ```
 
-## Range Expressions
-
-Create ranges for iteration:
-
-```quill
-let r = 0..5          // 0, 1, 2, 3, 4 (excludes end)
-for i in r {
-    print(i)
-}
-```
-
 ## Next Steps
 
-Learn about [Operators](/docs/basics/operators) to work with these data types.
+Learn about [Operators](/docs/basics/operators) to perform computations with these types.

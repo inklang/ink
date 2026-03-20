@@ -4,34 +4,56 @@ sidebar_position: 1
 
 # Variables
 
-Learn how to declare and use variables in quill.
+Variables store values that your program can use and modify.
 
-## Variable Declaration
+## Declaring Variables
 
-Use the `let` keyword to declare variables:
+Use `let` to declare a variable:
 
-```quill
-let name = "quill"
-let age = 25
-let isActive = true
+```ink
+let name = "ink"
+let version = 1.0
+let isAwesome = true
 ```
 
-## Variable Assignment
+## Reassigning Variables
 
-Reassign variables after declaration:
+Change a variable's value after declaration:
 
-```quill
+```ink
 let count = 0
 count = 1
 count = count + 1
-print(count)  // Output: 2
+print(count)  // 2
+```
+
+## Variable Names
+
+Variable names must:
+
+- Start with a letter or underscore
+- Contain only letters, numbers, and underscores
+- Not be a reserved keyword
+
+```ink
+// Valid names
+let myVar = 1
+let _private = 2
+let userName123 = 3
+let camelCase = 4
+let PI = 3.14159
+
+// Invalid names (will cause errors)
+// let 123var = 1
+// let my-var = 2
+// let let = 3  // 'let' is a keyword
 ```
 
 ## Scope
 
 Variables are scoped to the block they're declared in:
 
-```quill
+```ink
 let global = "I'm global"
 
 fn example() {
@@ -41,31 +63,15 @@ fn example() {
 }
 
 print(global)  // Works
-// print(local)  // Error - local is out of scope
-```
-
-## Naming Rules
-
-Variable names must:
-
-- Start with a letter or underscore
-- Contain only letters, numbers, and underscores
-- Not be a reserved keyword
-
-```quill
-// Valid names
-let myVar = 1
-let _private = 2
-let userName123 = 3
-
-// Invalid names (will cause errors)
-// let 123var = 1
-// let my-var = 2
-// let let = 3
+// print(local)  // Error! local is not in scope here
 ```
 
 ## Best Practices
 
 - Use descriptive names: `userCount` instead of `x`
-- Use camelCase for multi-word names
-- Avoid single-letter names except for simple counters
+- Use camelCase for multi-word names: `firstName`, `isActive`
+- Use UPPER_SNAKE_CASE for constants: `MAX_SIZE`, `DEFAULT_TIMEOUT`
+
+## Next Steps
+
+Now learn about the different [Data Types](/docs/basics/data-types) that variables can hold.

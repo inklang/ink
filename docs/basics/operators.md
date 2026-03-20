@@ -4,70 +4,92 @@ sidebar_position: 3
 
 # Operators
 
-Learn the operators available in quill.
+Operators perform computations on values.
 
 ## Arithmetic Operators
 
-```quill
+```ink
 let a = 10
 let b = 3
 
 print(a + b)   // 13 (addition)
 print(a - b)   // 7  (subtraction)
 print(a * b)   // 30 (multiplication)
-print(a / b)   // 3.33... (division)
-print(a % b)   // 1  (modulo/remainder)
-print(a ** b)   // 1000 (power)
+print(a / b)   // 3  (division)
+print(a % b)   // 1  (modulo - remainder)
+print(a ** b)  // 1000 (power: 10³)
 ```
 
 ## Comparison Operators
 
-```quill
+Compare values to get true or false:
+
+```ink
 let x = 5
 let y = 10
 
-print(x == y)  // false (equal)
-print(x != y)  // true  (not equal)
-print(x < y)   // true  (less than)
-print(x > y)   // false (greater than)
-print(x <= y)  // true  (less or equal)
-print(x >= y)  // false (greater or equal)
+print(x == y)   // false (equal)
+print(x != y)   // true  (not equal)
+print(x < y)    // true  (less than)
+print(x > y)    // false (greater than)
+print(x <= y)   // true  (less or equal)
+print(x >= y)   // false (greater or equal)
 ```
 
 ## Logical Operators
 
-```quill
+Combine boolean conditions:
+
+```ink
 let a = true
 let b = false
 
-print(a and b)  // false (and)
-print(a or b)   // true  (or)
-print(!a)       // false (not)
+print(a and b)   // false - both must be true
+print(a or b)    // true - at least one must be true
+print(!a)        // false - negation
 ```
 
-## String Operators
+## String Concatenation
 
-```quill
+Join strings together:
+
+```ink
 let first = "Hello"
 let last = "World"
 
-// Concatenation
 let full = first + " " + last
 print(full)  // "Hello World"
+
+// With interpolation
+let name = "ink"
+print("I love ${name}!")  // "I love ink!"
 ```
 
 ## Assignment Operators
 
-```quill
+Change variable values:
+
+```ink
 let count = 0
 
-count = 5           // Simple assignment
-count += 1          // count = count + 1
-count -= 1          // count = count - 1
-count *= 2          // count = count * 2
-count /= 2          // count = count / 2
-++count             // Prefix increment
---count             // Prefix decrement
+// Simple assignment
+count = 5
+
+// Add and assign
+count += 1    // count = count + 1
+
+// Subtract and assign
+count -= 2   // count = count - 2
+
+// Multiply and assign
+count *= 3   // count = count * 3
+
+// Divide and assign
+count /= 2   // count = count / 2
+
+// Increment/decrement
+++count      // count = count + 1
+--count      // count = count - 1
 ```
 
 ## Operator Precedence
@@ -85,11 +107,11 @@ Operators are evaluated in this order (highest to lowest):
 
 Use parentheses to control order:
 
-```quill
-let result = (2 + 3) * 4  // 20
-let other = 2 + 3 * 4     // 14
+```ink
+let result = (2 + 3) * 4   // 20 - parentheses first
+let other = 2 + 3 * 4      // 14 - multiplication before addition
 ```
 
 ## Next Steps
 
-Learn about [Control Flow](/docs/basics/control-flow) to make decisions in your code.
+Learn how to control program flow with [Control Flow](/docs/basics/control-flow).

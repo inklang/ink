@@ -2,51 +2,55 @@
 sidebar_position: 3
 ---
 
-# Running quill Code
+# Running ink Code
 
-Learn different ways to run your quill programs.
+Learn different ways to run your ink programs.
 
 ## Using Gradle
 
-The standard way to run quill programs:
+The standard way to run ink programs:
 
 ```bash
-./gradlew run --args="filename.quill"
+./gradlew run --args="filename.ink"
 ```
 
 ## Running Multiple Files
 
-You can pass multiple files:
+You can pass multiple files (they execute in order):
 
 ```bash
-./gradlew run --args="main.quill utils.quill"
+./gradlew run --args="main.ink utils.ink"
 ```
 
-## Common Run Options
+## File Naming
 
-### Debug Mode
+ink source files use the `.ink` extension:
 
-For debugging output:
+```
+hello.ink
+myprogram.ink
+game.ink
+```
+
+## Common Issues
+
+### "Could not find or load main class"
+
+Run `./gradlew build` first to compile the project.
+
+### "File not found"
+
+Make sure you're in the project root directory and the file path is correct.
+
+## Building a JAR
+
+To build a deployable JAR for Paper servers:
 
 ```bash
-./gradlew run --args="--debug filename.quill"
+./gradlew shadowJar
 ```
 
-### Help
-
-View available options:
-
-```bash
-./gradlew run --args="--help"
-```
-
-## REPL (Coming Soon)
-
-quill will soon support an interactive REPL:
-
-```bash
-./gradlew run --args="--repl"
-```
+The output will be in `build/libs/inklang-paper-1.0-SNAPSHOT.jar`.
 
 ## Next Steps
 

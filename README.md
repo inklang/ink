@@ -1,6 +1,6 @@
-# Quill Documentation
+# ink Documentation
 
-Documentation for the [Quill programming language](https://github.com/inklang/ainscript) - a compiled scripting language written in Kotlin that targets a register-based bytecode VM.
+Documentation for the [ink programming language](https://github.com/inklang/ink) — a modern scripting language for PaperMC servers.
 
 ## Quick Start
 
@@ -9,17 +9,24 @@ npm install
 npm start
 ```
 
-## About Quill
+## About ink
 
-Quill is a modern scripting language with:
+ink is a compiled scripting language with:
 - Clean, expressive syntax
-- Strong typing with type inference
-- First-class functions and closures
 - Classes with inheritance
+- First-class functions and closures
 - String interpolation
-- Register-based bytecode VM (16 physical registers)
-- SSA-based optimizations
+- Register-based bytecode VM with SSA optimizations
+
+## Learning Path
+
+1. [Getting Started](/docs/intro) — Install and run your first program
+2. [Language Basics](/docs/basics/variables) — Variables, types, operators, control flow
+3. [Functions](/docs/functions/defining) — Defining and using functions
+4. [Data Structures](/docs/data-structures/arrays) — Arrays and maps
+5. [Classes](/docs/classes/defining) — Object-oriented programming
+6. [Examples](/docs/examples) — Real programs to study
 
 ## Contributing
 
-Found an error or want to improve the docs? Edit files in `docs/` and submit a pull request to [ainscript](https://github.com/inklang/ainscript).
+Found an error or want to improve the docs? Edit files in `docs/` and submit a PR to [inklang/ink](https://github.com/inklang/ink).

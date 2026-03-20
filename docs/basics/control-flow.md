@@ -4,31 +4,31 @@ sidebar_position: 4
 
 # Control Flow
 
-Control the flow of execution in your quill programs.
+Control how your program executes—making decisions and repeating actions.
 
 ## If Statements
 
-Execute code conditionally:
+Execute code only when a condition is true:
 
-```quill
+```ink
 let score = 85
 
 if score >= 90 {
-    print("A")
+    print("A - Excellent!")
 } else if score >= 80 {
-    print("B")
+    print("B - Good job!")
 } else if score >= 70 {
-    print("C")
+    print("C - Passing")
 } else {
-    print("F")
+    print("F - Needs improvement")
 }
 ```
 
 ## While Loops
 
-Repeat code while a condition is true:
+Repeat code while a condition remains true:
 
-```quill
+```ink
 let count = 0
 
 while count < 5 {
@@ -44,7 +44,8 @@ Iterate over ranges or collections:
 
 ### Range Iteration
 
-```quill
+```ink
+// 0 through 4
 for i in 0..5 {
     print(i)
 }
@@ -53,7 +54,7 @@ for i in 0..5 {
 
 ### Array Iteration
 
-```quill
+```ink
 let fruits = ["apple", "banana", "cherry"]
 
 for fruit in fruits {
@@ -62,54 +63,75 @@ for fruit in fruits {
 // Output: apple, banana, cherry
 ```
 
-### Index-Based Iteration
-
-```quill
-let items = [10, 20, 30]
-
-for i in 0..len(items) {
-    print("Index " + i + ": " + items[i])
-}
-```
-
 ## Break and Continue
 
 Control loop execution:
 
-```quill
-// Break - exit the loop early
+### Break — Exit Early
+
+```ink
 let i = 0
 while true {
     if i >= 5 {
-        break
+        break  // Exit the loop
     }
     print(i)
     i = i + 1
 }
-
-// Continue - skip to next iteration
-for i in 0..10 {
-    if i % 2 == 0 {
-        continue
-    }
-    print(i)  // Only prints odd numbers
-}
+// Output: 0, 1, 2, 3, 4
 ```
 
-## Nested Control Flow
+### Continue — Skip Iterations
 
-Combine control structures:
+```ink
+// Print only odd numbers
+for i in 0..10 {
+    if i % 2 == 0 {
+        continue  // Skip even numbers
+    }
+    print(i)
+}
+// Output: 1, 3, 5, 7, 9
+```
 
-```quill
+## Nested Loops
+
+Loops inside loops:
+
+```ink
 for i in 0..3 {
     for j in 0..3 {
         if i == j {
-            print("Diagonal: " + i)
+            print("(${i}, ${j}) - diagonal")
+        } else {
+            print("(${i}, ${j})")
         }
     }
 }
 ```
 
+## Logical Conditions in Loops
+
+Combine operators for complex conditions:
+
+```ink
+let x = 0
+while x < 10 {
+    if x > 5 and x % 2 == 0 {
+        print("${x} is > 5 and even")
+    }
+    x = x + 1
+}
+```
+
+## When to Use Each Loop
+
+| Loop Type | Use When |
+|-----------|----------|
+| `while` | You don't know how many iterations you need |
+| `for..in range` | You need to iterate a specific number of times |
+| `for..in array` | You need to process each element in a collection |
+
 ## Next Steps
 
-Now learn about [Functions](/docs/functions/defining) to organize your code.
+Learn how to organize code into reusable blocks with [Functions](/docs/functions/defining).

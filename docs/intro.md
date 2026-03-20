@@ -3,41 +3,54 @@ sidebar_position: 1
 slug: /
 ---
 
-# Welcome to quill
+# Welcome to ink
 
-quill is a modern, expressive programming language designed for simplicity and power.
+ink is a modern, expressive scripting language built for embedding in Minecraft servers. It combines clean syntax with powerful features—classes, functions, string interpolation, and more—running on a fast register-based bytecode VM.
 
-## Overview
+## Why ink?
 
-quill combines clean syntax with powerful features to make programming enjoyable and productive. Whether you're building scripts, applications, or exploring language design, quill provides the tools you need.
-
-## Features
-
-- **Clean Syntax** - Readable and expressive code that's easy to write and maintain
-- **Strong Typing** - Type safety with type inference for cleaner code
-- **First-class Functions** - Functions as values, closures, and higher-order functions
-- **Data Structures** - Built-in support for arrays and maps
-- **Control Flow** - Familiar constructs like `if`, `while`, and `for`
+- **Clean syntax** — Expressive code that's easy to read and write
+- **First-class functions** — Functions as values, with closures and higher-order functions
+- **Object-oriented** — Classes with inheritance and methods
+- **Fast VM** — Register-based bytecode with SSA optimizations
+- **Built for Minecraft** — Designed to script PaperMC servers
 
 ## Quick Example
 
-```lec
-// Define a function to calculate factorial
-fn factorial(n) {
-    if n <= 1 {
-        return 1
-    }
-    return n * factorial(n - 1)
+```ink
+// Define a function with string interpolation
+fn greet(name) {
+    return "Hello, ${name}!"
 }
 
-// Print factorial of 5
-print(factorial(5))  // Output: 120
+print(greet("Player"))  // Hello, Player!
+
+// Classes with inheritance
+class Animal {
+    init(name) {
+        this.name = name
+    }
+
+    speak() {
+        return "${this.name} makes a sound"
+    }
+}
+
+class Dog extends Animal {
+    speak() {
+        return "${this.name} barks!"
+    }
+}
+
+let dog = Dog("Buddy")
+print(dog.speak())  // Buddy barks!
 ```
 
 ## Getting Started
 
-Ready to start coding? Head over to the [Installation Guide](/docs/getting-started/installation) to set up your environment.
+Ready to write your first ink program? Head over to the [Installation Guide](/docs/getting-started/installation) to set up your environment.
 
-## Contributing
+## Resources
 
-quill is open source! Check out the [GitHub repository](https://github.com/inklang/ainscript) to contribute.
+- [GitHub Repository](https://github.com/inklang/ink) — Source code and issue tracker
+- [Inklang Discord](https://discord.gg/inklang) — Community chat

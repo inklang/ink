@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Your First Program
 
-Let's write and understand your first quill program.
+Let's write your first ink program and learn the basics of the language.
 
-## Hello World
+## Hello, World!
 
-Create a file named `hello.quill`:
+Create a file called `hello.ink`:
 
-```quill title="hello.quill"
+```ink title="hello.ink"
 print("Hello, World!")
 ```
 
 Run it:
 
 ```bash
-./gradlew run --args="hello.quill"
+./gradlew run --args="hello.ink"
 ```
 
 Output:
@@ -26,44 +26,121 @@ Output:
 Hello, World!
 ```
 
-## Program Structure
-
-Let's look at a slightly more complex program:
-
-```quill
-// This is a comment
-let name = "quill"
-let version = 1.0
-
-// Define a function
-fn greet(person) {
-    return "Hello, " + person + "!"
-}
-
-// Call the function and print result
-print(greet(name))
-```
-
-### Breaking it Down
-
-1. **Comments** - Use `//` for single-line comments
-2. **Variables** - Use `let` to declare variables
-3. **Functions** - Use `fn` to define functions
-4. **Print** - Use `print()` to output to console
-
 ## Variables and Types
 
-quill supports several data types:
+ink has a few basic data types. Let's explore them:
 
-```quill
-let integer = 42          // Number
-let float = 3.14          // Number (decimal)
-let string = "Hello"      // String
-let boolean = true        // Boolean
-let array = [1, 2, 3]     // Array
-let nothing = null        // Null
+```ink title="types.ink"
+// Numbers (ints)
+let age = 25
+let price = 19.99
+
+// Strings
+let name = "ink"
+let greeting = "Hello, ${name}!"
+
+// Booleans
+let isAwesome = true
+
+// Null (no value)
+let nothing = null
+
+print(greeting)  // Hello, ink!
+print(age + 5)   // 30
+```
+
+## Comments
+
+Use `//` for single-line comments:
+
+```ink
+// This is a comment
+let x = 10  // This is also a comment
+```
+
+## Operators
+
+Perform arithmetic and comparisons:
+
+```ink
+let a = 10
+let b = 3
+
+print(a + b)   // 13 (addition)
+print(a - b)   // 7  (subtraction)
+print(a * b)   // 30 (multiplication)
+print(a / b)   // 3  (division)
+print(a % b)   // 1  (modulo)
+print(a ** b)  // 1000 (power)
+```
+
+## String Interpolation
+
+Embed expressions directly in strings with `${}`:
+
+```ink
+let name = "Alice"
+let age = 30
+
+print("My name is ${name} and I am ${age} years old")
+// My name is Alice and I am 30 years old
+```
+
+## Making Decisions with If
+
+Control what your program does based on conditions:
+
+```ink
+let score = 85
+
+if score >= 90 {
+    print("A - Excellent!")
+} else if score >= 80 {
+    print("B - Good job!")
+} else if score >= 70 {
+    print("C - Passing")
+} else {
+    print("F - Needs improvement")
+}
+```
+
+## Repeating Things with Loops
+
+Run code multiple times:
+
+```ink
+// While loop
+let count = 0
+while count < 3 {
+    print(count)
+    count = count + 1
+}
+// Output: 0, 1, 2
+
+// For loop with range
+for i in 0..5 {
+    print(i)
+}
+// Output: 0, 1, 2, 3, 4
+```
+
+## Organizing Code with Functions
+
+Group code into reusable functions:
+
+```ink
+fn greet(name) {
+    return "Hello, ${name}!"
+}
+
+fn add(a, b) {
+    return a + b
+}
+
+print(greet("World"))  // Hello, World!
+print(add(5, 3))        // 8
 ```
 
 ## Next Steps
 
-Learn how to [Run Code](/docs/getting-started/running-code) more efficiently, or dive into [Variables](/docs/basics/variables).
+You're ready to explore [Variables](/docs/basics/variables) and [Data Types](/docs/basics/data-types) in more depth, or jump into [Control Flow](/docs/basics/control-flow) to learn about loops and conditionals.

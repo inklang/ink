@@ -10,7 +10,6 @@ const sidebars = {
       items: [
         'getting-started/installation',
         'getting-started/first-program',
-        'getting-started/running-code',
       ],
     },
     {
@@ -29,7 +28,6 @@ const sidebars = {
       items: [
         'functions/defining',
         'functions/parameters',
-        'functions/return-values',
       ],
     },
     {
@@ -38,6 +36,14 @@ const sidebars = {
       items: [
         'data-structures/arrays',
         'data-structures/maps',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Classes',
+      items: [
+        'classes/defining',
+        'classes/inheritance',
       ],
     },
     'examples',

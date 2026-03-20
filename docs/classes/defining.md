@@ -1,0 +1,127 @@
+---
+sidebar_position: 1
+---
+
+# Defining Classes
+
+Classes create custom types that bundle data and functions together.
+
+## Basic Class
+
+```ink
+class Dog {
+    init(name) {
+        this.name = name
+    }
+
+    speak() {
+        return "${this.name} says woof!"
+    }
+}
+
+let dog = Dog("Buddy")
+print(dog.speak())  // Buddy says woof!
+```
+
+## The `init` Method
+
+The `init` method is the constructor—it's called when you create a new instance:
+
+```ink
+class Person {
+    init(name, age) {
+        this.name = name
+        this.age = age
+    }
+
+    introduce() {
+        return "I'm ${this.name}, ${this.age} years old"
+    }
+}
+
+let person = Person("Alice", 30)
+print(person.introduce())  // I'm Alice, 30 years old
+```
+
+## Instance Variables
+
+Variables stored on an instance are called fields:
+
+```ink
+class Counter {
+    init() {
+        this.count = 0
+    }
+
+    increment() {
+        this.count = this.count + 1
+    }
+
+    getCount() {
+        return this.count
+    }
+}
+
+let counter = Counter()
+counter.increment()
+counter.increment()
+print(counter.getCount())  // 2
+```
+
+## Class Methods
+
+Methods are functions that belong to a class. They always receive `this` as the first argument:
+
+```ink
+class Calculator {
+    init() {
+        this.result = 0
+    }
+
+    add(value) {
+        this.result = this.result + value
+        return this
+    }
+
+    subtract(value) {
+        this.result = this.result - value
+        return this
+    }
+
+    getResult() {
+        return this.result
+    }
+}
+
+let calc = Calculator()
+calc.add(10).subtract(3)
+print(calc.getResult())  // 7
+```
+
+## Method Chaining
+
+Methods that return `this` enable chaining:
+
+```ink
+class Builder {
+    init() {
+        this.parts = []
+    }
+
+    addPart(part) {
+        this.parts.push(part)
+        return this
+    }
+
+    build() {
+        return this.parts.join(", ")
+    }
+}
+
+let result = Builder().addPart("A").addPart("B").addPart("C").build()
+print(result)  // A, B, C
+```
+
+## Next Steps
+
+Learn about [Class Inheritance](/docs/classes/inheritance) to extend classes.

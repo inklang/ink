@@ -4,61 +4,60 @@ sidebar_position: 1
 
 # Installation
 
-Learn how to install and set up quill on your system.
+This guide walks you through setting up ink on your machine.
 
 ## Prerequisites
 
-- **Java Development Kit (JDK) 21** - quill runs on the JVM
-- **Gradle** (optional) - For building from source
+- **Java Development Kit (JDK) 21** — ink runs on the JVM
+- **Git** — For cloning the repository
 
-## Building from Source
-
-### 1. Clone the Repository
+## Clone the Repository
 
 ```bash
-git clone https://github.com/inklang/ainscript.git
-cd ainscript
+git clone https://github.com/inklang/ink.git
+cd ink
 ```
 
-### 2. Build with Gradle
+## Build with Gradle
 
 ```bash
 ./gradlew build
 ```
 
-### 3. Run quill
+This compiles the language and runs the test suite. You should see all tests pass.
 
-```bash
-./gradlew run --args="your-file.quill"
-```
+## Run Your First Program
 
-## Development Setup
+Create a file called `hello.ink`:
 
-For development, you can use:
-
-- **IntelliJ IDEA** - Recommended for Kotlin development
-- **VS Code** - With Kotlin extensions
-
-## Verifying Installation
-
-Create a simple test file:
-
-```lec title="hello.quill"
-print("Hello, quill!")
+```ink title="hello.ink"
+print("Hello, ink!")
 ```
 
 Run it:
 
 ```bash
-./gradlew run --args="hello.quill"
+./gradlew run --args="hello.ink"
 ```
 
 You should see:
 
 ```
-Hello, quill!
+Hello, ink!
 ```
+
+## Development Setup
+
+### IntelliJ IDEA
+
+1. Open the project folder in IntelliJ
+2. Select "Import Gradle project"
+3. The Kotlin plugin is included via Gradle toolchains
+
+### VS Code
+
+Install the ink extension when available, or use the Kotlin language extension for basic syntax highlighting.
 
 ## Next Steps
 
-Now that you have quill installed, let's write your [First Program](/docs/getting-started/first-program)!
+Now that ink is installed, let's write [Your First Program](/docs/getting-started/first-program)!

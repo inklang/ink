@@ -321,6 +321,14 @@ class Parser(private val tokens: List<Token>) {
                 continue
             }
 
+            // Elvis: left ?? right
+            if (token.type == TokenType.QUESTION_QUESTION) {
+                advance()  // consume ??
+                val right = parseExpression(15)  // same precedence as ternary
+                left = Expr.ElvisExpr(left, right)
+                continue
+            }
+
             advance()
             val right = parseExpression(precedence + 1)
             left = Expr.BinaryExpr(left, token, right)

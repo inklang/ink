@@ -78,8 +78,9 @@ class AstLowerer {
         is Stmt.ImportStmt -> {
             val dst = freshReg()
             locals[stmt.namespace.lexeme] = dst
-            // For stdlib imports (math, random), load the actual instance from globals
-            if (stmt.namespace.lexeme == "math" || stmt.namespace.lexeme == "random") {
+            // For stdlib imports (math, random, io, json), load the actual instance from globals
+            if (stmt.namespace.lexeme == "math" || stmt.namespace.lexeme == "random" ||
+                stmt.namespace.lexeme == "io" || stmt.namespace.lexeme == "json") {
                 emit(IrInstr.LoadGlobal(dst, stmt.namespace.lexeme))
             } else {
                 // For other imports, keep the marker string behavior
@@ -105,11 +106,56 @@ class AstLowerer {
             emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
         }
         is Stmt.TableStmt -> {
-            val dst = freshReg()
-            locals[stmt.name.lexeme] = dst
-            val tableClassIdx = addConstant(Value.String("__table__${stmt.name.lexeme}"))
-            emit(IrInstr.LoadImm(dst, tableClassIdx))
-            emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
+            val tableName = stmt.name.lexeme
+            val fieldNames = stmt.fields.map { it.name.lexeme }
+            val keyFieldIdx = stmt.fields.indexOfFirst { it.isKey }.takeIf { it >= 0 } ?: 0
+
+            // Step 1: db.registerTable("Player", ["id", "name", "score"], 0)
+            val dbReg = freshReg()
+            emit(IrInstr.LoadGlobal(dbReg, "db"))
+
+            val tableNameIdx = addConstant(Value.String(tableName))
+            val tableNameReg = freshReg()
+            emit(IrInstr.LoadImm(tableNameReg, tableNameIdx))
+
+            // Build array of field name strings
+            val fieldRegs = fieldNames.map { name ->
+                val r = freshReg()
+                val idx = addConstant(Value.String(name))
+                emit(IrInstr.LoadImm(r, idx))
+                r
+            }
+            val fieldsReg = freshReg()
+            emit(IrInstr.NewArray(fieldsReg, fieldRegs))
+
+            val keyIdxIdx = addConstant(Value.Int(keyFieldIdx))
+            val keyIdxReg = freshReg()
+            emit(IrInstr.LoadImm(keyIdxReg, keyIdxIdx))
+
+            // Get the registerTable method from db
+            val registerTableMethodReg = freshReg()
+            emit(IrInstr.GetField(registerTableMethodReg, dbReg, "registerTable"))
+
+            // Call db.registerTable(tableName, fields, keyIndex)
+            emit(IrInstr.Call(freshReg(), registerTableMethodReg, listOf(tableNameReg, fieldsReg, keyIdxReg)))
+
+            // Step 2: Player = db("Player")
+            // Re-load db since it might have been clobbered
+            val dbReg2 = freshReg()
+            emit(IrInstr.LoadGlobal(dbReg2, "db"))
+            val tableNameReg2 = freshReg()
+            emit(IrInstr.LoadImm(tableNameReg2, tableNameIdx))
+
+            // Get the from method from db
+            val fromMethodReg = freshReg()
+            emit(IrInstr.GetField(fromMethodReg, dbReg2, "from"))
+
+            // Call db.from(tableName)
+            val playerReg = freshReg()
+            emit(IrInstr.Call(playerReg, fromMethodReg, listOf(tableNameReg2)))
+
+            locals[tableName] = playerReg
+            emit(IrInstr.StoreGlobal(tableName, playerReg))
         }
     }
 

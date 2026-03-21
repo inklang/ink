@@ -20,6 +20,10 @@ class InkCompilerTest {
         override fun print(message: String) {
             prints.add(message)
         }
+
+        override fun io(): InkIo = throw UnsupportedOperationException("io not implemented in tests")
+        override fun json(): InkJson = throw UnsupportedOperationException("json not implemented in tests")
+        override fun db(): InkDb = throw UnsupportedOperationException("db not implemented in tests")
     }
 
     @Test

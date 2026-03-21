@@ -91,6 +91,12 @@ sealed class Value {
         val eventParamName: String,
         val dataParamNames: List<String>
     ) : Value()
+
+    /** Event declaration metadata stored at compile time */
+    data class EventInfo(
+        val name: kotlin.String,
+        val params: List<Pair<kotlin.String, kotlin.String>>  // param name to type
+    ) : Value()
 }
 
 object Builtins {

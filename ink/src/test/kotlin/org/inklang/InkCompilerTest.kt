@@ -330,4 +330,20 @@ class InkCompilerTest {
         script.execute(context)
         assertEquals(listOf("Anonymous", "Bob"), context.prints)
     }
+
+    @Test
+    fun `default value can reference earlier parameter`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            fn scale(value: Int, multiplier: Int = value * 2) -> Int {
+                value * multiplier
+            }
+            print(scale(5))
+            print(scale(5, 3))
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("50", "15"), context.prints)
+    }
 }

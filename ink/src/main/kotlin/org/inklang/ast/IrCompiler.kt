@@ -237,6 +237,9 @@ class IrCompiler {
                 is IrInstr.Throw -> chunk.write(OpCode.THROW, src1 = instr.src)
                 is IrInstr.RegisterEventHandler -> { /* registered at runtime, no bytecode */ }
                 is IrInstr.InvokeEventHandler -> { /* invoked at runtime, no bytecode */ }
+                is IrInstr.AwaitInstr -> { /* implemented in VM */ }
+                is IrInstr.SpawnInstr -> { /* implemented in VM */ }
+                is IrInstr.AsyncCallInstr -> { /* implemented in VM */ }
             }
         }
 

@@ -799,6 +799,18 @@ open class AstLowerer {
             emit(IrInstr.Label(endLabel))
             dst
         }
+        is Expr.AwaitExpr -> {
+            // await expr - lower to AwaitInstr
+            val taskReg = lowerExpr(expr.expr, freshReg())
+            emit(IrInstr.AwaitInstr(dst, taskReg))
+            dst
+        }
+        is Expr.SpawnExpr -> {
+            // spawn [virtual] expr - lower to SpawnInstr
+            val funcReg = lowerExpr(expr.expr, freshReg())
+            emit(IrInstr.SpawnInstr(dst, funcReg, expr.virtual))
+            dst
+        }
         is Expr.ThrowExpr -> {
             val valueReg = lowerExpr(expr.value, freshReg())
             emit(IrInstr.Throw(valueReg))

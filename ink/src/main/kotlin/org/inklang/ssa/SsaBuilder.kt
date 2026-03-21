@@ -238,6 +238,9 @@ class SsaBuilder(
         is IrInstr.Throw -> null
         is IrInstr.RegisterEventHandler -> null
         is IrInstr.InvokeEventHandler -> null
+        is IrInstr.AwaitInstr -> null  // implemented in VM
+        is IrInstr.SpawnInstr -> null  // implemented in VM
+        is IrInstr.AsyncCallInstr -> null  // implemented in VM
     }
 
     /**

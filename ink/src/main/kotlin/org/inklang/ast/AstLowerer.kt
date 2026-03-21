@@ -224,6 +224,8 @@ open class AstLowerer {
             )
             emit(instr)
         }
+        is Stmt.EnableStmt -> lowerBlock(stmt.block)
+        is Stmt.DisableStmt -> lowerBlock(stmt.block)
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {

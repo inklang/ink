@@ -5,8 +5,11 @@ import org.inklang.ast.ConstantFolder
 import org.inklang.ast.LivenessAnalyzer
 import org.inklang.ast.RegisterAllocator
 import org.inklang.ast.SpillInserter
+import org.inklang.lang.ConfigFieldDef
+import org.inklang.lang.Expr
 import org.inklang.lang.IrCompiler
 import org.inklang.lang.Parser
+import org.inklang.lang.Stmt
 import org.inklang.lang.tokenize
 
 /**
@@ -65,7 +68,26 @@ class InkCompiler {
             val chunk = IrCompiler().compile(AstLowerer.LoweredResult(resolved, ssaResult.constants))
             chunk.spillSlotCount = allocResult.spillSlotCount
 
-            return InkScript(name, chunk)
+            // Extract config field definitions for runtime loading
+            val configDefinitions = mutableMapOf<String, List<ConfigFieldDef>>()
+            for (stmt in statements) {
+                if (stmt is Stmt.ConfigStmt) {
+                    val fields = stmt.fields.map { field ->
+                        ConfigFieldDef(
+                            name = field.name.lexeme,
+                            type = field.type.lexeme,
+                            defaultValue = field.defaultValue?.let { expr ->
+                                // Evaluate constant expression to Value
+                                val folded = folder.fold(expr)
+                                (folded as? Expr.LiteralExpr)?.literal
+                            }
+                        )
+                    }
+                    configDefinitions[stmt.name.lexeme] = fields
+                }
+            }
+
+            return InkScript(name, chunk, configDefinitions)
         } catch (e: CompilationException) {
             throw e
         } catch (e: Exception) {

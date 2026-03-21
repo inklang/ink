@@ -70,7 +70,7 @@ sealed class Expr {
 
     data class CallExpr(val callee: Expr, val paren: Token, val arguments: List<Expr>) : Expr()
 
-    data class LambdaExpr(val params: List<Param>, val body: Stmt.BlockStmt) : Expr()
+    data class LambdaExpr(val params: List<Param>, val body: Stmt.BlockStmt, val isAsync: Boolean = false) : Expr()
 
     data class GetExpr(val obj: Expr, val name: Token) : Expr()
 
@@ -82,6 +82,12 @@ sealed class Expr {
     data class SafeCallExpr(val obj: Expr, val name: Token) : Expr()
 
     data class ElvisExpr(val left: Expr, val right: Expr) : Expr()
+
+    // await expression - unary prefix operator
+    data class AwaitExpr(val expr: Expr) : Expr()
+
+    // spawn [virtual] expression
+    data class SpawnExpr(val expr: Expr, val virtual: Boolean = false) : Expr()
 
     data class ThrowExpr(val value: Expr) : Expr()
 

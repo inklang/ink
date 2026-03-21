@@ -43,6 +43,7 @@ fn process(@notNull input: string) { ... }
 - **Parameters** — `fn foo(@notNull arg: int)`
 
 Return values, enum variants, and local variables are **not** annotatable in this initial version.
+Annotation declarations themselves may not be annotated ( `@hidden annotation Foo {...}` is not allowed).
 
 Multiple annotations can be stacked on a single declaration.
 
@@ -67,10 +68,6 @@ annotation Deprecated {
 annotation Inline {
     level: int = 1
 }
-
-annotation Deprecated {
-    reason: string
-}
 ```
 
 Annotation fields have types: `string`, `int`, `bool`, `float`, `double`.
@@ -81,8 +78,10 @@ Default values are specified with `= value` syntax. Fields without defaults are 
 | Annotation | Fields | Purpose |
 |------------|--------|---------|
 | `@deprecated` | `reason: string` | Warn when deprecated declaration is used |
-| `@inline` | `level: int = 1` | Suggest inlining to optimizer |
+| `@inline` | `level: int = 1` (valid range: 1–3) | Suggest inlining to optimizer |
 | `@pure` | — | Function has no side effects |
+
+**@inline levels:** 1 = suggest inline, 2 = prefer inline, 3 = always inline
 
 ## Implementation
 
@@ -157,9 +156,10 @@ AstLowerer
 3. **PureValidator** — For `@pure` functions, verify no side-effecting operations:
    - No reads or writes to globals
    - No calls to non-`@pure` functions
-   - No I/O operations (print, read, etc.)
+   - No I/O operations (print, read, file I/O, network, etc.) — including built-in functions
    - A `@pure` function calling another `@pure` function is allowed.
    - If a `@pure` function calls an unknown/unannotated function, emit an error.
+   - Built-in functions are considered I/O and are not allowed in `@pure` functions.
 4. **Unknown annotations** — Ignored by default. To enable warnings for unknown annotations, use the `--warn-unknown-annotations` compiler flag.
 
 ### Error Handling
@@ -170,6 +170,7 @@ AstLowerer
 | `@inline` on non-function | Compiler error |
 | Missing required annotation field | Compiler error |
 | Unknown annotation field | Compiler error |
+| Annotation field type mismatch | Compiler error (e.g., `@inline(level="foo")`) |
 | `@deprecated` usage | Compiler warning with reason |
 | `@pure` calls unknown-purity function | Compiler error |
 

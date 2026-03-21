@@ -309,4 +309,25 @@ class InkCompilerTest {
         script.execute(context)
         assertEquals(listOf("31", "23", "6"), context.prints)
     }
+
+    @Test
+    fun `class constructor with default parameters`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            class Person {
+                var name: String
+                fn new(name: String = "Anonymous") {
+                    this.name = name
+                }
+            }
+            val p1 = Person::new()
+            val p2 = Person::new("Bob")
+            print(p1.name)
+            print(p2.name)
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("Anonymous", "Bob"), context.prints)
+    }
 }

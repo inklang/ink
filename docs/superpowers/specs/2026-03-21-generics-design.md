@@ -118,11 +118,20 @@ let box = Box<Int>::new(42)      // explicit
 ## Grammar Changes
 
 ```
-GenericTypeParam ::= '<' IDENTIFIER ('<' IDENTIFIER (',' IDENTIFIER)* '>')?
-TypeBound        ::= ':' TYPE
-FunctionDecl    ::= 'fn' IDENTIFIER GenericTypeParam? '(' Params? ')' ('->' Type)? Block
-ClassDecl        ::= 'class' IDENTIFIER GenericTypeParam? ('extends' Type)? Block
+GenericTypeParamList ::= '<' TypeParam (',' TypeParam)* '>'
+TypeParam            ::= IDENTIFIER (':' TypeConstraint)?
+TypeConstraint       ::= IDENTIFIER (',' IDENTIFIER)*
+
+FunctionDecl    ::= 'fn' IDENTIFIER GenericTypeParamList? '(' Params? ')' ('->' Type)? Block
+ClassDecl       ::= 'class' IDENTIFIER GenericTypeParamList? ('extends' Type)? ClassBody
+
+ClassBody       ::= '{' (FuncDecl | VarDecl)* '}'
+ConstructorDecl ::= 'fn' 'new' '(' Params? ')' Block
 ```
+
+Nested generics are parsed left-to-right: `List<List<T>>` is parsed as type `List` with arg `List<T>`, then wrapped again with outer `>`.
+
+Constructor is declared with `fn new` — no `static` keyword needed. The class name is used to call constructors: `Box::new(42)` or `Box<Int>::new(42)`.
 
 ## Implementation Phases
 
@@ -134,11 +143,15 @@ ClassDecl        ::= 'class' IDENTIFIER GenericTypeParam? ('extends' Type)? Bloc
 
 ## Runtime Representation
 
-Two options:
-- **Erasure (JVM style):** Type parameters are removed at runtime. `Box<Int>` and `Box<String>` are the same class at runtime. Simpler, matches JVM.
-- **Reification:** Type parameters are preserved. `Box<Int>` and `Box<String>` are distinct. More powerful but complex.
+**Erasure (JVM style):** Type parameters are removed at runtime. `Box<Int>` and `Box<String>` are the same class at runtime. This matches the JVM model Inklang already targets.
 
-**Recommendation:** Start with erasure (JVM style). Store type arguments in metadata when needed for reflection/AI features.
+Type arguments are stored in metadata for reflection and AI features, but bytecode operates on the erased type.
+
+### Primitive Types
+
+Primitives (Int, Bool, Float) are **auto-boxed** when used in generic contexts. `List<Int>` internally stores a `List<IntBox>` where `IntBox` wraps the primitive. This is handled automatically by the compiler — users write `List<Int>` and it works.
+
+All built-in types (Int, Bool, Float, String) are considered `Printable` and `Comparable`.
 
 ## Examples
 
@@ -174,11 +187,19 @@ fn toDebug<T : Printable>(value: T) -> String {
 
 toDebug(42)        // works - Int is Printable
 toDebug("hello")   // works - String is Printable
-toDebug(42)        // compile error if Int not Printable
 ```
 
-## Open Questions
+### Default Bounds
 
-1. Should type parameters have default bounds? (e.g., `T` defaults to `Any`)
-2. How do primitive types (Int, Bool, Float) interact with generics?
-3. Should we support method-chained syntax like `list.map<Int>()`?
+Type parameters without explicit bounds default to `Any`. So `fn identity<T>` is equivalent to `fn identity<T : Any>`.
+
+## Error Handling
+
+| Scenario | Error |
+|----------|-------|
+| Type argument violates bound | "Type `X` does not satisfy constraint `Y`" |
+| Explicit type args mismatch count | "Expected N type arguments, got M" |
+| Inference conflict with explicit | "Cannot infer type argument — specify explicitly" |
+| Primitive used where ref type needed | Compiler inserts auto-boxing |
+
+Type argument inference uses a single algorithm for both function calls and constructors. The compiler examines argument types and return type expectations to deduce `T`.

@@ -130,7 +130,8 @@ sealed class Stmt {
         val name: Token,
         val params: List<Param>,
         val returnType: Token?,
-        val body: BlockStmt
+        val body: BlockStmt,
+        val isAsync: Boolean = false
     ) : Stmt()
 
     data class ReturnStmt(val value: Expr?) : Stmt()

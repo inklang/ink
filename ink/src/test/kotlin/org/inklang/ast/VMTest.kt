@@ -146,7 +146,7 @@ class VMTest {
     fun testBooleanExpression() {
         val output = compileAndRun("print(1 < 2)")
         // Value.Boolean doesn't override toString(), uses data class default
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
@@ -261,7 +261,7 @@ class VMTest {
             print(Direction.UP == Direction.UP)
             print(Direction.UP == Direction.DOWN)
         """.trimIndent())
-        assertEquals(listOf("Boolean(value=true)", "Boolean(value=false)"), output)
+        assertEquals(listOf("true", "false"), output)
     }
 
     // Table/Config/Import parsing tests (parse-only, no runtime execution)
@@ -378,7 +378,7 @@ class VMTest {
             print(a)
             """.trimIndent()
         )
-        assertEquals(listOf("Boolean(value=false)"), output)
+        assertEquals(listOf("false"), output)
     }
 
     @Test
@@ -389,7 +389,7 @@ class VMTest {
             print(a)
             """.trimIndent()
         )
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
@@ -412,7 +412,7 @@ class VMTest {
             print(a)
             """.trimIndent()
         )
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
@@ -423,7 +423,7 @@ class VMTest {
             print(a)
             """.trimIndent()
         )
-        assertEquals(listOf("Boolean(value=false)"), output)
+        assertEquals(listOf("false"), output)
     }
 
     @Test
@@ -437,7 +437,7 @@ class VMTest {
             print(x)
             """.trimIndent()
         )
-        assertEquals(listOf("Boolean(value=false)", "0"), output)
+        assertEquals(listOf("false", "0"), output)
     }
 
     @Test
@@ -448,7 +448,7 @@ class VMTest {
             print(a)
             """.trimIndent()
         )
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
@@ -459,7 +459,7 @@ class VMTest {
             print(a)
             """.trimIndent()
         )
-        assertEquals(listOf("Boolean(value=false)"), output)
+        assertEquals(listOf("false"), output)
     }
 
     @Test
@@ -473,7 +473,7 @@ class VMTest {
             print(x)
             """.trimIndent()
         )
-        assertEquals(listOf("Boolean(value=true)", "0"), output)
+        assertEquals(listOf("true", "0"), output)
     }
 
     @Test
@@ -589,13 +589,13 @@ class VMTest {
     @Test
     fun testStringContainsTrue() {
         val output = compileAndRun("""print("hello world".contains("world"))""")
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
     fun testStringContainsFalse() {
         val output = compileAndRun("""print("hello world".contains("foo"))""")
-        assertEquals(listOf("Boolean(value=false)"), output)
+        assertEquals(listOf("false"), output)
     }
 
     @Test
@@ -626,25 +626,25 @@ class VMTest {
     @Test
     fun testStringStartsWithTrue() {
         val output = compileAndRun("""print("hello".startsWith("hel"))""")
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
     fun testStringStartsWithFalse() {
         val output = compileAndRun("""print("hello".startsWith("world"))""")
-        assertEquals(listOf("Boolean(value=false)"), output)
+        assertEquals(listOf("false"), output)
     }
 
     @Test
     fun testStringEndsWithTrue() {
         val output = compileAndRun("""print("hello".endsWith("llo"))""")
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
     fun testStringEndsWithFalse() {
         val output = compileAndRun("""print("hello".endsWith("world"))""")
-        assertEquals(listOf("Boolean(value=false)"), output)
+        assertEquals(listOf("false"), output)
     }
 
     @Test
@@ -674,25 +674,25 @@ class VMTest {
     @Test
     fun testStringIsEmptyTrue() {
         val output = compileAndRun("""print("".isEmpty())""")
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
     fun testStringIsEmptyFalse() {
         val output = compileAndRun("""print("hello".isEmpty())""")
-        assertEquals(listOf("Boolean(value=false)"), output)
+        assertEquals(listOf("false"), output)
     }
 
     @Test
     fun testStringIsBlankTrue() {
         val output = compileAndRun("""print("   ".isBlank())""")
-        assertEquals(listOf("Boolean(value=true)"), output)
+        assertEquals(listOf("true"), output)
     }
 
     @Test
     fun testStringIsBlankFalse() {
         val output = compileAndRun("""print("hello".isBlank())""")
-        assertEquals(listOf("Boolean(value=false)"), output)
+        assertEquals(listOf("false"), output)
     }
 
     @Test
@@ -765,7 +765,7 @@ class VMTest {
             print(s.has(2))
             print(s.has(5))
         """.trimIndent())
-        assertEquals(listOf("Boolean(value=true)", "Boolean(value=false)"), output)
+        assertEquals(listOf("true", "false"), output)
     }
 
     @Test
@@ -786,7 +786,7 @@ class VMTest {
             print(s.size())
             print(s.has(2))
         """.trimIndent())
-        assertEquals(listOf("2", "Boolean(value=false)"), output)
+        assertEquals(listOf("2", "false"), output)
     }
 
     @Test
@@ -901,7 +901,7 @@ class VMTest {
             print(t.has(2))
             print(t.has(5))
         """.trimIndent())
-        assertEquals(listOf("Boolean(value=true)", "Boolean(value=false)"), output)
+        assertEquals(listOf("true", "false"), output)
     }
 
     @Ignore("SSA round-trip bug with loops causes infinite loop")

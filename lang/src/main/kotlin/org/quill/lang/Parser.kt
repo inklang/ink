@@ -93,6 +93,47 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.ConfigStmt(name, fields)
     }
 
+    private fun parseEventDecl(): Stmt {
+        consume(TokenType.KW_EVENT, "Expected 'event'")
+        val name = consume(TokenType.IDENTIFIER, "Expected event name")
+        consume(TokenType.L_PAREN, "Expected '('")
+        val params = mutableListOf<Stmt.EventParam>()
+        if (!check(TokenType.R_PAREN)) {
+            do {
+                val paramName = consume(TokenType.IDENTIFIER, "Expected parameter name")
+                consume(TokenType.COLON, "Expected ':' after parameter name")
+                val paramType = consume(TokenType.IDENTIFIER, "Expected type")
+                params.add(Stmt.EventParam(paramName, paramType))
+            } while (match(TokenType.COMMA))
+        }
+        consume(TokenType.R_PAREN, "Expected ')'")
+        return Stmt.EventDeclStmt(name, params)
+    }
+
+    private fun parseOnHandler(): Stmt {
+        consume(TokenType.KW_ON, "Expected 'on'")
+        val eventName = consume(TokenType.IDENTIFIER, "Expected event name")
+        consume(TokenType.L_PAREN, "Expected '('")
+
+        // First param is always the event object (user-named)
+        val eventParam = consume(TokenType.IDENTIFIER, "Expected event parameter name")
+
+        val dataParams = mutableListOf<Stmt.EventParam>()
+        if (!check(TokenType.R_PAREN)) {
+            consume(TokenType.COMMA, "Expected ',' after event param")
+            do {
+                val paramName = consume(TokenType.IDENTIFIER, "Expected parameter name")
+                consume(TokenType.COLON, "Expected ':' after parameter name")
+                val paramType = consume(TokenType.IDENTIFIER, "Expected type")
+                dataParams.add(Stmt.EventParam(paramName, paramType))
+            } while (match(TokenType.COMMA))
+        }
+        consume(TokenType.R_PAREN, "Expected ')'")
+
+        val body = parseBlock()
+        return Stmt.OnHandlerStmt(eventName, null, eventParam, dataParams, body)
+    }
+
     private fun parseStmt(): Stmt {
         return when {
             check(TokenType.KW_IMPORT) -> parseImport()
@@ -114,6 +155,8 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KW_ENUM) -> parseEnum()
             check(TokenType.KW_TABLE) -> parseTable()
             check(TokenType.KW_CONFIG) -> parseConfig()
+            check(TokenType.KW_EVENT) -> parseEventDecl()
+            check(TokenType.KW_ON) -> parseOnHandler()
             else -> {
                 val expr = parseExpression(0)
                 if (check(TokenType.SEMICOLON)) advance()

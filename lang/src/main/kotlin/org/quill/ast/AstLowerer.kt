@@ -1,5 +1,6 @@
 package org.quill.ast
 
+import org.quill.CompilationException
 import org.quill.lang.*
 import org.quill.lang.IrInstr.*
 
@@ -119,6 +120,32 @@ class AstLowerer {
             Unit
         }
         is Stmt.OnHandlerStmt -> {
+            val eventName = stmt.eventName.lexeme
+            val knownEvents = setOf("player_join", "player_quit", "chat_message",
+                "block_break", "block_place", "entity_death", "entity_damage",
+                "server_start", "server_stop")
+            if (eventName !in knownEvents) {
+                throw CompilationException(
+                    "RuntimeError: Unknown event '$eventName'. Available: ${knownEvents.joinToString(", ")}"
+                )
+            }
+
+            // Validate parameter count
+            val expectedParams = when (eventName) {
+                "player_join", "player_quit" -> 2  // event + player
+                "block_break", "block_place" -> 3   // event + block + player
+                "chat_message" -> 3                 // event + player + message
+                "entity_death" -> 3                 // event + entity + killer
+                "entity_damage" -> 3                // event + entity + amount
+                else -> 2
+            }
+            val actualParams = 1 + stmt.dataParams.size  // event + data params
+            if (actualParams != expectedParams) {
+                throw CompilationException(
+                    "RuntimeError: Event '$eventName' expects $expectedParams parameters (including event), got $actualParams"
+                )
+            }
+
             // Compile the handler body to a function chunk
             val handlerLowerer = AstLowerer()
             for ((i, param) in stmt.dataParams.withIndex()) {

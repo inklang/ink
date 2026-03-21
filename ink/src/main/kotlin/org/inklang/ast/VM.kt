@@ -36,9 +36,55 @@ class VM {
             println(args.joinToString(" ") { valueToString(it) })
             Value.Null
         },
+<<<<<<< HEAD:ink/src/main/kotlin/org/inklang/ast/VM.kt
         // Stdlib instances for import
         "math" to mathInstance,
         "random" to randomInstance,
+=======
+
+        // Event registry for on-handler storage
+        "__eventRegistry" to Value.Instance(ClassDescriptor("EventRegistry", null, mapOf())),
+
+        // cancel builtin
+        "cancel" to Value.NativeFunction { args ->
+            if (args.isNotEmpty() && args[0] is Value.EventObject) {
+                (args[0] as Value.EventObject).cancelled = true
+            }
+            Value.Null
+        },
+
+        // events builtin
+        "events" to Value.Instance(ClassDescriptor("Events", null, mapOf(
+            "list" to Value.NativeFunction { args ->
+                val names = listOf(
+                    Value.String("player_join"),
+                    Value.String("player_quit"),
+                    Value.String("chat_message"),
+                    Value.String("block_break"),
+                    Value.String("block_place"),
+                    Value.String("entity_death"),
+                    Value.String("entity_damage"),
+                    Value.String("server_start"),
+                    Value.String("server_stop")
+                )
+                // Return as a list-like instance
+                val items = Value.InternalList(names.toMutableList())
+                Value.Instance(ClassDescriptor("List", null, mapOf("__items" to items)))
+            },
+            "exists" to Value.NativeFunction { args ->
+                val name = (args.getOrNull(1) as? Value.String)?.value ?: ""
+                val available = setOf("player_join", "player_quit", "chat_message",
+                    "block_break", "block_place", "entity_death", "entity_damage",
+                    "server_start", "server_stop")
+                if (name in available) Value.Boolean.TRUE else Value.Boolean.FALSE
+            },
+            "info" to Value.NativeFunction { args ->
+                val name = (args.getOrNull(1) as? Value.String)?.value ?: ""
+                // Return info as an instance
+                Value.Instance(ClassDescriptor("EventInfo", null, mapOf("name" to Value.String(name))))
+            }
+        ), readOnly = true))
+>>>>>>> d88c11f (feat: add event registry and cancel to ContextVM):lang/src/main/kotlin/org/quill/ast/VM.kt
     )
 
     data class CallFrame(
@@ -363,6 +409,18 @@ class VM {
                         else -> throwable.toString()
                     }
                     error("Uncaught exception: $message")
+                }
+                OpCode.REGISTER_EVENT -> {
+                    val eventName: kotlin.String = (frame.regs[src1] as? Value.String)?.value ?: ""
+                    val handlerFunc = frame.regs[src2] as? Value.Function
+                        ?: error("REGISTER_EVENT requires a Function")
+                    // Store in event registry
+                    val registry = globals["__eventRegistry"] as? Value.Instance
+                        ?: error("No event registry")
+                    registry.fields["__handlers"] = registry.fields["__handlers"] ?: Value.InternalList(mutableListOf())
+                    val handlers = (registry.fields["__handlers"] as? Value.InternalList)!!
+                    handlers.items.add(Value.EventHandler(Value.String(eventName), handlerFunc, Value.String(""), emptyList()))
+                }
                 }
             }
         }

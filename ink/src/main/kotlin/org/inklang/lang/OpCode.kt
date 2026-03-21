@@ -56,4 +56,5 @@ enum class OpCode(val code: Byte) {
     POW(0x28),      // dst = src1 ^ src2
     HAS(0x29),      // dst = obj.has(field) — true if field exists
     THROW(0x2A),    // throw value in src1
+    REGISTER_EVENT(0x2B),
 }

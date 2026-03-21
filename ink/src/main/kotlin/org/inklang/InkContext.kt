@@ -1,5 +1,7 @@
 package org.inklang
 
+import org.inklang.lang.Value
+
 /**
  * Context interface that runtime hosts implement.
  * Scripts never access platform APIs directly - they call log/print,
@@ -20,4 +22,15 @@ interface InkContext {
 
     /** Database driver provided by the host runtime */
     fun db(): InkDb
+
+    /** Register an event handler for the given event */
+    fun registerEventHandler(
+        eventName: String,
+        handlerFunc: Value.Function,
+        eventParamName: String,
+        dataParamNames: List<String>
+    )
+
+    /** Fire an event and return whether it was cancelled */
+    fun fireEvent(eventName: String, event: Value.EventObject, data: List<Value?>): Boolean
 }

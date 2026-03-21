@@ -11,6 +11,19 @@ private fun unescape(s: String): String = buildString {
                 '"'  -> { append('"');  i += 2 }
                 '\\' -> { append('\\'); i += 2 }
                 '$'  -> { append('$');  i += 2 }
+                'u'  -> {
+                    if (i + 6 <= s.length) {
+                        val hex = s.substring(i + 2, i + 6)
+                        if (hex.all { it in "0123456789abcdefABCDEF" }) {
+                            append(hex.toInt(16).toChar())
+                            i += 6
+                        } else {
+                            append(s[i]); i++
+                        }
+                    } else {
+                        append(s[i]); i++
+                    }
+                }
                 else -> { append(s[i]); i++ }
             }
         } else {

@@ -7,6 +7,7 @@ class AstLowerer {
     private val instrs = mutableListOf<IrInstr>()
     private var labelCounter = 0
     private val constants = mutableListOf<Value>()
+    private val functions = mutableListOf<List<IrInstr>>()
     private var regCounter = 0
     private val locals = mutableMapOf<String, Int>()
     private val constLocals = mutableSetOf<String>()
@@ -26,11 +27,11 @@ class AstLowerer {
         instrs.add(instr)
     }
 
-    data class LoweredResult(val instrs: List<IrInstr>, val constants: List<Value>)
+    data class LoweredResult(val instrs: List<IrInstr>, val constants: List<Value>, val functions: MutableList<List<IrInstr>> = mutableListOf())
 
     fun lower(stmts: List<Stmt>): LoweredResult {
         for (s in stmts) lowerStmt(s)
-        return LoweredResult(instrs, constants)
+        return LoweredResult(instrs, constants, functions)
     }
 
     private fun lowerStmt(stmt: Stmt): Unit = when (stmt) {
@@ -160,10 +161,39 @@ class AstLowerer {
         // Annotation declarations are compile-time only - no IR emitted
         is Stmt.AnnotationDeclStmt -> { /* no-op */ }
         is Stmt.EventDeclStmt -> {
-            // Event declarations are handled at runtime by the event system
+            // Event declarations are type-only at this stage
+            // Store event metadata in the constants table
+            val eventInfo = Value.EventInfo(
+                stmt.name.lexeme,
+                stmt.params.map { it.name.lexeme to it.type.lexeme }
+            )
+            // Register with the event registry at compile time
+            constants.add(eventInfo)
+            // Nothing to emit - event info is registered via stdlib
+            Unit
         }
         is Stmt.OnHandlerStmt -> {
-            // On-handler statements are handled at runtime by the event system
+            // Compile the handler body to a function chunk
+            val handlerLowerer = AstLowerer()
+            for ((i, param) in stmt.dataParams.withIndex()) {
+                handlerLowerer.locals[param.name.lexeme] = i
+            }
+            handlerLowerer.regCounter = stmt.dataParams.size
+            val handlerResult = handlerLowerer.lower(stmt.body.stmts)
+
+            // Track handler function index before adding
+            val handlerFuncIndex = functions.size
+            functions.add(handlerResult.instrs)
+            constants.addAll(handlerResult.constants)
+
+            // Emit RegisterEventHandler instruction
+            val instr = IrInstr.RegisterEventHandler(
+                eventName = stmt.eventName.lexeme,
+                handlerFuncIndex = handlerFuncIndex,
+                eventParamName = stmt.eventParam.lexeme,
+                dataParamNames = stmt.dataParams.map { it.name.lexeme }
+            )
+            emit(instr)
         }
     }
 

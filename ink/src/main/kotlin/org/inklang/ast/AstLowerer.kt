@@ -17,6 +17,8 @@ open class AstLowerer {
     protected var lambdaCounter = 0
     // Field names for class methods - used to resolve bare identifiers to self.fieldName
     protected open var fieldNames: Set<String> = emptySet()
+    // Track which functions are async (name -> true)
+    protected val asyncFunctions = mutableSetOf<String>()
 
     private fun freshReg(): Int = regCounter++
     private fun freshLabel(): IrLabel = IrLabel(labelCounter++)
@@ -374,6 +376,9 @@ open class AstLowerer {
 
         val dst = freshReg()
         locals[stmt.name.lexeme] = dst
+        if (stmt.isAsync) {
+            asyncFunctions.add(stmt.name.lexeme)
+        }
         emit(IrInstr.LoadFunc(dst, stmt.name.lexeme, stmt.params.size, result.instrs, result.constants, defaultValues))
         // Also store in globals so other functions can call it
         emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
@@ -640,11 +645,16 @@ open class AstLowerer {
             }
         }
         is Expr.CallExpr -> {
-            // Regular function/method/constructor call
-            // The VM handles Value.Class by creating a new instance
+            // Check if this is a call to an async function
+            val isAsyncCall = expr.callee is Expr.VariableExpr &&
+                              expr.callee.name.lexeme in asyncFunctions
             val funcReg = lowerExpr(expr.callee, freshReg())
             val argRegs = expr.arguments.map { lowerExpr(it, freshReg()) }
-            emit(Call(dst, funcReg, argRegs))
+            if (isAsyncCall) {
+                emit(AsyncCallInstr(dst, funcReg))
+            } else {
+                emit(Call(dst, funcReg, argRegs))
+            }
             dst
         }
         is Expr.GroupExpr -> lowerExpr(expr.expr, dst)

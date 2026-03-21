@@ -33,4 +33,13 @@ interface InkContext {
 
     /** Fire an event and return whether it was cancelled */
     fun fireEvent(eventName: String, event: Value.EventObject, data: List<Value?>): Boolean
+
+    /** Called when a plugin is enabled — returns the enable block's result, or throws */
+    fun onEnable(script: InkScript)
+
+    /** Called when a plugin is disabled — returns the disable block's result, or throws */
+    fun onDisable(script: InkScript)
+
+    /** Check if this context supports plugins (has lifecycle) */
+    fun supportsLifecycle(): Boolean = true
 }

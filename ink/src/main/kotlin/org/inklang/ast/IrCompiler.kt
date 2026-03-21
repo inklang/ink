@@ -146,6 +146,11 @@ class IrCompiler {
                     val idx = chunk.functions.size
                     chunk.functions.add(funcChunk)
 
+                    // Store upvalue info for runtime extraction
+                    if (instr.capturedVars.isNotEmpty()) {
+                        chunk.functionUpvalues[idx] = Pair(instr.capturedVars.size, instr.upvalueRegs)
+                    }
+
                     // Compile default value expressions
                     val defaultChunkIndices = instr.defaultValues.map { defaultInfo ->
                         if (defaultInfo != null) {

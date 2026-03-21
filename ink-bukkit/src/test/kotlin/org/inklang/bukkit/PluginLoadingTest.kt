@@ -125,15 +125,15 @@ class PluginLoadingTest {
 
         val vmBeforeUnload = loadedPlugin.vm
 
+        // Verify VM reference is still valid and unchanged before unload
+        assertTrue(vmBeforeUnload === loadedPlugin.vm, "VM reference should remain the same before unload")
+
         // unloadPlugin should run disable in the same VM
         runtime.unloadPlugin("testplugin")
-
-        // If we reach here without exception, disable ran in the same VM
-        assertTrue(true, "unloadPlugin completed without error")
     }
 
     @Test
-    fun `fireEvent executes handler in plugin VM`() {
+    fun `event handler registers in plugin VM on load`() {
         // Create a plugin that registers an event handler
         val pluginScript = """
             enable {
@@ -159,19 +159,22 @@ class PluginLoadingTest {
         assertNotNull(registry, "event registry should exist")
         assertTrue(registry is Value.Instance, "event registry should be Instance")
 
-        val registryInstance = registry as Value.Instance
+        val registryInstance = registry as? Value.Instance
+        assertNotNull(registryInstance, "event registry should be Instance")
         val handlers = registryInstance.fields["__handlers"]
         assertNotNull(handlers, "__handlers should exist in registry")
         assertTrue(handlers is Value.InternalList, "__handlers should be InternalList")
 
-        val handlersList = handlers as Value.InternalList
+        val handlersList = handlers as? Value.InternalList
+        assertNotNull(handlersList, "__handlers should be InternalList")
         assertTrue(handlersList.items.isNotEmpty(), "at least one handler should be registered")
 
         // Verify the handler is for player_join event
         val handler = handlersList.items.firstOrNull()
         assertNotNull(handler, "handler should not be null")
         assertTrue(handler is Value.EventHandler, "handler should be EventHandler")
-        val eventHandler = handler as Value.EventHandler
+        val eventHandler = handler as? Value.EventHandler
+        assertNotNull(eventHandler, "handler should be EventHandler")
         assertTrue(eventHandler.eventName.value == "player_join", "handler should be for player_join event")
     }
 }

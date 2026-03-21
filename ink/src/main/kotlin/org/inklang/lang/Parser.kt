@@ -472,7 +472,22 @@ class Parser(private val tokens: List<Token>) {
                 match(TokenType.L_PAREN) -> {
                     val args = mutableListOf<Expr>()
                     if (!check(TokenType.R_PAREN)) {
-                        do { args.add(parseExpression(0)) } while (match(TokenType.COMMA))
+                        var seenNamed = false
+                        do {
+                            // Check if this is a named argument: name = expr
+                            if (check(TokenType.IDENTIFIER) && checkAhead(1, TokenType.ASSIGN)) {
+                                val name = advance() // consume identifier
+                                advance() // consume =
+                                val value = parseExpression(0)
+                                args.add(Expr.NamedArgExpr(name, value))
+                                seenNamed = true
+                            } else {
+                                if (seenNamed) {
+                                    throw error(peek(), "Positional argument cannot follow named argument")
+                                }
+                                args.add(parseExpression(0))
+                            }
+                        } while (match(TokenType.COMMA))
                     }
                     val paren = consume(TokenType.R_PAREN, "Expected ')' after arguments")
                     Expr.CallExpr(expr, paren, args)

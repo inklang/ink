@@ -104,6 +104,14 @@ class ContextVM(
         ))
     )
 
+    /**
+     * Merge pre-loaded global values (e.g. from config files) into the VM's globals.
+     * Must be called before execute().
+     */
+    fun setGlobals(overrides: Map<String, Value>) {
+        globals.putAll(overrides)
+    }
+
     data class CallFrame(
         val chunk: Chunk,
         var ip: Int = 0,

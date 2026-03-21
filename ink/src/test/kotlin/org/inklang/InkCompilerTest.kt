@@ -260,4 +260,39 @@ class InkCompilerTest {
         script.execute(context)
         assertEquals(listOf("anonymous"), context.prints)
     }
+
+    @Test
+    fun `compile and execute async function call`() {
+        val compiler = InkCompiler()
+        val source = """
+            async fn getValue() {
+                return 42;
+            }
+            let task = getValue();
+            print("got task");
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("got task"), context.prints)
+    }
+
+    @Test
+    fun `compile and execute spawn`() {
+        val compiler = InkCompiler()
+        // Note: spawn currently prints to stdout, not context
+        // This test just verifies spawn doesn't crash
+        val source = """
+            fn simple() {
+                print("simple spawn");
+            }
+            spawn simple();
+            print("done");
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        // Just verify "done" was printed to context
+        assertTrue(context.prints.contains("done"), "Expected 'done', got: ${context.prints}")
+    }
 }

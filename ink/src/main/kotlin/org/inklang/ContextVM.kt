@@ -669,12 +669,19 @@ class ContextVM(
             OpCode.CALL -> {
                 val passedArgCount = imm
                 val args = (0 until passedArgCount).mapNotNull { frame.argBuffer.removeFirstOrNull() }
-                val func = frame.regs[src1] as? Value.Function
-                    ?: throw ScriptException("Cannot call non-function in async")
-                val newFrame = CallFrame(func.chunk)
-                newFrame.returnDst = dst
-                args.forEachIndexed { i, v -> newFrame.regs[i] = v }
-                frames.addLast(newFrame)
+                val func = frame.regs[src1]
+                when (func) {
+                    is Value.Function -> {
+                        val newFrame = CallFrame(func.chunk)
+                        newFrame.returnDst = dst
+                        args.forEachIndexed { i, v -> newFrame.regs[i] = v }
+                        frames.addLast(newFrame)
+                    }
+                    is Value.NativeFunction -> {
+                        frame.regs[dst] = func.fn(args)
+                    }
+                    else -> throw ScriptException("Cannot call non-function in async: $func")
+                }
             }
             OpCode.RETURN -> {
                 val returnVal = frame.regs[src1]

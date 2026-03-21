@@ -105,6 +105,12 @@ class AstLowerer {
             emit(IrInstr.LoadImm(dst, tableClassIdx))
             emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
         }
+        is Stmt.EventDeclStmt -> {
+            // Event declarations are handled at runtime by the event system
+        }
+        is Stmt.OnHandlerStmt -> {
+            // On-handler statements are handled at runtime by the event system
+        }
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {

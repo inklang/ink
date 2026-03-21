@@ -75,6 +75,22 @@ sealed class Value {
     data class InternalTuple(val items: List<Value>) : Value() {
         override fun toString() = items.joinToString(", ", "(", ")")
     }
+
+    /** Event object passed to handlers */
+    data class EventObject(
+        val eventName: String,
+        val cancellable: kotlin.Boolean,
+        var cancelled: kotlin.Boolean = false,
+        val data: List<Value?>
+    ) : Value()
+
+    /** Event handler registered via `on` */
+    data class EventHandler(
+        val eventName: String,
+        val handlerFunc: Value.Function,
+        val eventParamName: String,
+        val dataParamNames: List<String>
+    ) : Value()
 }
 
 object Builtins {

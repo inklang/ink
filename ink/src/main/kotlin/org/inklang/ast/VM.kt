@@ -2,6 +2,8 @@ package org.inklang.lang
 
 import org.inklang.lang.Value.*
 import org.inklang.lang.getStringMethod
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ForkJoinPool
 
 fun valueToString(v: Value): String = when (v) {
     is Value.Instance -> {
@@ -24,6 +26,10 @@ class VM {
     // Pre-created instances for stdlib - must be initialized before globals
     private val mathInstance = Builtins.newMath()
     private val randomInstance = Builtins.newRandom()
+
+    // Thread pools for async operations
+    private val virtualThreadPool = ForkJoinPool.commonPool()
+    private val blockingThreadPool = ForkJoinPool.commonPool()  // TODO: separate pool for blocking
 
     val globals = mutableMapOf<String, Value>(
         "Array" to Value.Class(Builtins.ArrayClass),
@@ -419,22 +425,255 @@ class VM {
                     handlers.items.add(Value.EventHandler(Value.String(eventName), handlerFunc, Value.String(""), emptyList()))
                 }
                 OpCode.ASYNC_CALL -> {
-                    // TODO: async call - launch async function, store Task in dst
-                    error("ASYNC_CALL not yet implemented")
+                    // Launch async function on virtual thread pool, return Task
+                    val passedArgCount = imm
+                    val args = (0 until passedArgCount).map { i ->
+                        frame.argBuffer.removeFirstOrNull() ?: error("Missing argument $i in arg buffer")
+                    }
+                    val func = frame.regs[src1] as? Value.Function
+                        ?: error("ASYNC_CALL requires a Function")
+
+                    val future = CompletableFuture<Value>()
+                    virtualThreadPool.submit {
+                        try {
+                            // Execute the async function synchronously on virtual thread
+                            val asyncFrames = ArrayDeque<CallFrame>()
+                            val asyncFrame = CallFrame(func.chunk)
+                            asyncFrame.returnDst = 0  // Use register 0 for return
+                            args.forEachIndexed { i, v -> asyncFrame.regs[i] = v }
+                            asyncFrames.addLast(asyncFrame)
+
+                            // Simplified execution - run until completion
+                            // Note: await inside async function not yet supported
+                            while (asyncFrames.isNotEmpty()) {
+                                val af = asyncFrames.last()
+                                if (af.ip >= af.chunk.code.size) {
+                                    asyncFrames.removeLast()
+                                    continue
+                                }
+                                val aword = af.chunk.code[af.ip++]
+                                val aopcode = OpCode.entries.find { it.code == (aword and 0xFF).toByte() }
+                                    ?: error("Unknown opcode in async: ${aword and 0xFF}")
+                                executeAsyncInstr(af, aopcode, aword, asyncFrames, globals)
+                            }
+                            val result = asyncFrames.lastOrNull()?.regs?.get(0) ?: Value.Null
+                            future.complete(result)
+                        } catch (e: Exception) {
+                            future.completeExceptionally(e)
+                        }
+                    }
+                    frame.regs[dst] = Value.Task(future)
                 }
                 OpCode.AWAIT -> {
-                    // TODO: await - suspend until task completes
-                    error("AWAIT not yet implemented")
+                    // Block until the task completes
+                    val task = frame.regs[src1] as? Value.Task
+                        ?: error("AWAIT requires a Task")
+                    try {
+                        frame.regs[dst] = task.deferred.get()
+                    } catch (e: java.util.concurrent.ExecutionException) {
+                        val cause = e.cause ?: e
+                        error("Async operation failed: ${cause.message}")
+                    }
                 }
                 OpCode.SPAWN -> {
-                    // TODO: spawn on thread pool
-                    error("SPAWN not yet implemented")
+                    // Spawn on blocking thread pool (fire and forget)
+                    val passedArgCount = imm
+                    val args = (0 until passedArgCount).map { i ->
+                        frame.argBuffer.removeFirstOrNull() ?: error("Missing argument $i in arg buffer")
+                    }
+                    val func = frame.regs[src1] as? Value.Function
+                        ?: error("SPAWN requires a Function")
+
+                    blockingThreadPool.submit {
+                        try {
+                            val spawnFrames = ArrayDeque<CallFrame>()
+                            val spawnFrame = CallFrame(func.chunk)
+                            spawnFrame.returnDst = 0
+                            args.forEachIndexed { i, v -> spawnFrame.regs[i] = v }
+                            spawnFrames.addLast(spawnFrame)
+
+                            while (spawnFrames.isNotEmpty()) {
+                                val sf = spawnFrames.last()
+                                if (sf.ip >= sf.chunk.code.size) {
+                                    spawnFrames.removeLast()
+                                    continue
+                                }
+                                val sword = sf.chunk.code[sf.ip++]
+                                val sopcode = OpCode.entries.find { it.code == (sword and 0xFF).toByte() }
+                                    ?: error("Unknown opcode in spawn: ${sword and 0xFF}")
+                                executeAsyncInstr(sf, sopcode, sword, spawnFrames, globals)
+                            }
+                        } catch (e: Exception) {
+                            System.err.println("Spawned task failed: ${e.message}")
+                        }
+                    }
+                    frame.regs[dst] = Value.Null
                 }
                 OpCode.SPAWN_VIRTUAL -> {
-                    // TODO: spawn on virtual thread pool
-                    error("SPAWN_VIRTUAL not yet implemented")
+                    // Spawn on virtual thread pool (fire and forget)
+                    val passedArgCount = imm
+                    val args = (0 until passedArgCount).map { i ->
+                        frame.argBuffer.removeFirstOrNull() ?: error("Missing argument $i in arg buffer")
+                    }
+                    val func = frame.regs[src1] as? Value.Function
+                        ?: error("SPAWN_VIRTUAL requires a Function")
+
+                    virtualThreadPool.submit {
+                        try {
+                            val spawnFrames = ArrayDeque<CallFrame>()
+                            val spawnFrame = CallFrame(func.chunk)
+                            spawnFrame.returnDst = 0
+                            args.forEachIndexed { i, v -> spawnFrame.regs[i] = v }
+                            spawnFrames.addLast(spawnFrame)
+
+                            while (spawnFrames.isNotEmpty()) {
+                                val sf = spawnFrames.last()
+                                if (sf.ip >= sf.chunk.code.size) {
+                                    spawnFrames.removeLast()
+                                    continue
+                                }
+                                val sword = sf.chunk.code[sf.ip++]
+                                val sopcode = OpCode.entries.find { it.code == (sword and 0xFF).toByte() }
+                                    ?: error("Unknown opcode in spawn: ${sword and 0xFF}")
+                                executeAsyncInstr(sf, sopcode, sword, spawnFrames, globals)
+                            }
+                        } catch (e: Exception) {
+                            System.err.println("Spawned task failed: ${e.message}")
+                        }
+                    }
+                    frame.regs[dst] = Value.Null
                 }
             }
+        }
+    }
+
+    /**
+     * Execute a single instruction for async/spawn operations.
+     * This is a simplified executor that handles the basic opcodes needed for async function bodies.
+     */
+    private fun executeAsyncInstr(
+        frame: CallFrame,
+        opcode: OpCode,
+        word: Int,
+        frames: ArrayDeque<CallFrame>,
+        globals: MutableMap<String, Value>
+    ) {
+        val dst = (word shr 8) and 0x0F
+        val src1 = (word shr 12) and 0x0F
+        val src2 = (word shr 16) and 0x0F
+        val imm = (word shr 20) and 0xFFF
+
+        when (opcode) {
+            OpCode.LOAD_IMM -> frame.regs[dst] = frame.chunk.constants[imm]
+            OpCode.LOAD_GLOBAL -> frame.regs[dst] = globals[frame.chunk.strings[imm]]
+                ?: error("Undefined global: ${frame.chunk.strings[imm]}")
+            OpCode.STORE_GLOBAL -> globals.put(frame.chunk.strings[imm], frame.regs[src1]!!)
+            OpCode.MOVE -> frame.regs[dst] = frame.regs[src1]
+            OpCode.ADD -> {
+                val a = frame.regs[src1]!!
+                val b = frame.regs[src2]!!
+                if (a is Value.String || b is Value.String) {
+                    frame.regs[dst] = Value.String(a.toString() + b.toString())
+                } else {
+                    frame.regs[dst] = binop(a, b) { x, y -> x + y }
+                }
+            }
+            OpCode.SUB -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a - b }
+            OpCode.MUL -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a * b }
+            OpCode.DIV -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a / b }
+            OpCode.MOD -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a % b }
+            OpCode.POW -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> Math.pow(a, b) }
+            OpCode.NEG -> frame.regs[dst] = negate(frame.regs[src1]!!)
+            OpCode.NOT -> frame.regs[dst] = if (isFalsy(frame.regs[src1]!!)) Value.Boolean.TRUE else Value.Boolean.FALSE
+            OpCode.EQ -> frame.regs[dst] = if (frame.regs[src1] == frame.regs[src2]) Value.Boolean.TRUE else Value.Boolean.FALSE
+            OpCode.NEQ -> frame.regs[dst] = if (frame.regs[src1] != frame.regs[src2]) Value.Boolean.TRUE else Value.Boolean.FALSE
+            OpCode.LT -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a < b }
+            OpCode.LTE -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a <= b }
+            OpCode.GT -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a > b }
+            OpCode.GTE -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a >= b }
+            OpCode.JUMP -> frame.ip = imm
+            OpCode.JUMP_IF_FALSE -> if (isFalsy(frame.regs[src1]!!)) frame.ip = imm
+            OpCode.LOAD_FUNC -> {
+                val funcChunk = frame.chunk.functions[imm]
+                frame.regs[dst] = Value.Function(funcChunk)
+            }
+            OpCode.PUSH_ARG -> {
+                frame.argBuffer.addLast(frame.regs[src1] ?: error("Null in PUSH_ARG"))
+            }
+            OpCode.CALL -> {
+                val passedArgCount = imm
+                val args = (0 until passedArgCount).mapNotNull { frame.argBuffer.removeFirstOrNull() }
+                val func = frame.regs[src1] as? Value.Function
+                    ?: error("Cannot call non-function in async")
+                val newFrame = CallFrame(func.chunk)
+                newFrame.returnDst = dst
+                args.forEachIndexed { i, v -> newFrame.regs[i] = v }
+                frames.addLast(newFrame)
+            }
+            OpCode.RETURN -> {
+                val returnVal = frame.regs[src1]
+                val returnDst = frame.returnDst
+                frames.removeLast()
+                if (frames.isNotEmpty()) {
+                    frames.last().regs[returnDst] = returnVal
+                }
+            }
+            OpCode.NEW_ARRAY -> {
+                val count = imm
+                val elements = (0 until count).mapNotNull { frame.argBuffer.removeFirstOrNull() }
+                frame.regs[dst] = Builtins.newArray(elements.toMutableList())
+            }
+            OpCode.GET_FIELD -> {
+                val obj = frame.regs[src1]!!
+                val fieldName = frame.chunk.strings[imm]
+                frame.regs[dst] = when (obj) {
+                    is Value.Instance -> obj.fields[fieldName] ?: Value.Null
+                    is Value.String -> getStringMethod(obj, fieldName) ?: Value.Null
+                    else -> Value.Null
+                }
+            }
+            OpCode.SET_FIELD -> {
+                val obj = frame.regs[src1]!!
+                val fieldName = frame.chunk.strings[imm]
+                if (obj is Value.Instance) {
+                    obj.fields[fieldName] = frame.regs[src2] ?: Value.Null
+                }
+            }
+            OpCode.NEW_INSTANCE -> {
+                val classVal = frame.regs[src1] as? Value.Class
+                    ?: error("NEW_INSTANCE requires a Class")
+                frame.regs[dst] = Value.Instance(classVal.descriptor)
+            }
+            OpCode.GET_INDEX -> {
+                val obj = frame.regs[src1]!!
+                val index = (frame.regs[src2] as? Value.Int)?.value ?: 0
+                frame.regs[dst] = when (obj) {
+                    is Value.Instance -> {
+                        val items = obj.fields["__items"] as? Value.InternalList
+                            ?: obj.fields["__tuple"] as? Value.InternalTuple
+                        when {
+                            items is Value.InternalList -> items.items.getOrElse(index) { Value.Null }
+                            items is Value.InternalTuple -> items.items.getOrElse(index) { Value.Null }
+                            else -> Value.Null
+                        }
+                    }
+                    else -> Value.Null
+                }
+            }
+            OpCode.SET_INDEX -> {
+                val obj = frame.regs[src1]!!
+                val index = (frame.regs[src2] as? Value.Int)?.value ?: 0
+                val value = frame.regs[dst] ?: Value.Null
+                if (obj is Value.Instance) {
+                    val items = obj.fields["__items"] as? Value.InternalList
+                    if (items != null && index >= 0 && index < items.items.size) {
+                        items.items[index] = value
+                    }
+                }
+            }
+            OpCode.MOVE -> frame.regs[dst] = frame.regs[src1]
+            OpCode.POP -> { /* no-op */ }
+            else -> error("Unsupported opcode in async: $opcode")
         }
     }
 

@@ -38,7 +38,7 @@ class ClosureTest {
         val output = compileAndRun("""
             fn outer() {
                 let x = 10
-                let f = fn() { x }
+                let f = () -> { x }
                 print(f())
             }
         """.trimIndent())
@@ -51,7 +51,7 @@ class ClosureTest {
             fn outer() {
                 let a = 1
                 let b = 2
-                let f = fn() { a + b }
+                let f = () -> { a + b }
                 print(f())
             }
         """.trimIndent())
@@ -63,7 +63,7 @@ class ClosureTest {
         val output = compileAndRun("""
             fn outer() {
                 let x = 10
-                let f = fn(x) { x }
+                let f = (x) -> { x }
                 print(f(5))
             }
         """.trimIndent())

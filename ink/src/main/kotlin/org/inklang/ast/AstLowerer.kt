@@ -747,8 +747,6 @@ open class AstLowerer {
             val captured = mutableMapOf<String, Int>()
 
             val lowerer = AstLowerer()
-            lowerer.locals.clear()
-            lowerer.locals.putAll(enclosing)
             lowerer.enclosingLocals = enclosing
             lowerer.capturedVars = captured
             lowerer.fieldNames = fieldNames

@@ -418,6 +418,22 @@ class VM {
                     val handlers = (registry.fields["__handlers"] as? Value.InternalList)!!
                     handlers.items.add(Value.EventHandler(Value.String(eventName), handlerFunc, Value.String(""), emptyList()))
                 }
+                OpCode.ASYNC_CALL -> {
+                    // TODO: async call - launch async function, store Task in dst
+                    error("ASYNC_CALL not yet implemented")
+                }
+                OpCode.AWAIT -> {
+                    // TODO: await - suspend until task completes
+                    error("AWAIT not yet implemented")
+                }
+                OpCode.SPAWN -> {
+                    // TODO: spawn on thread pool
+                    error("SPAWN not yet implemented")
+                }
+                OpCode.SPAWN_VIRTUAL -> {
+                    // TODO: spawn on virtual thread pool
+                    error("SPAWN_VIRTUAL not yet implemented")
+                }
             }
         }
     }

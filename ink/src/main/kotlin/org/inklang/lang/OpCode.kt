@@ -57,4 +57,8 @@ enum class OpCode(val code: Byte) {
     HAS(0x29),      // dst = obj.has(field) — true if field exists
     THROW(0x2A),    // throw value in src1
     REGISTER_EVENT(0x2B),
+    ASYNC_CALL(0x2C),  // dst = async_call func (launches async function, returns Task)
+    AWAIT(0x2D),       // dst = await task (suspends until complete)
+    SPAWN(0x2E),       // spawn function on thread pool
+    SPAWN_VIRTUAL(0x2F), // spawn function on virtual thread pool
 }

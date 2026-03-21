@@ -181,6 +181,15 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KW_LET) || check(TokenType.KW_CONST) -> parseVar(leadingAnnotations)
             check(TokenType.KW_IF) -> parseIf()
             check(TokenType.KW_CLASS) -> parseClass(leadingAnnotations)
+            check(TokenType.KW_ASYNC) -> {
+                // async fn or async { } - consume async first
+                advance()
+                if (check(TokenType.KW_FN)) {
+                    parseFunc(leadingAnnotations, isAsync = true)
+                } else {
+                    throw error(peek(), "Expected 'fn' after 'async'")
+                }
+            }
             check(TokenType.KW_FN) -> parseFunc(leadingAnnotations)
             check(TokenType.KW_RETURN) -> parseReturn()
             check(TokenType.KW_BREAK) -> {
@@ -246,7 +255,7 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.ForRangeStmt(variable, iterable, body)
     }
 
-    private fun parseFunc(leadingAnnotations: List<Expr.AnnotationExpr> = emptyList()): Stmt {
+    private fun parseFunc(leadingAnnotations: List<Expr.AnnotationExpr> = emptyList(), isAsync: Boolean = false): Stmt {
         // Use leading annotations if provided, otherwise parse them (for when called directly)
         val annotations = if (leadingAnnotations.isNotEmpty()) {
             leadingAnnotations
@@ -292,7 +301,7 @@ class Parser(private val tokens: List<Token>) {
             parseType()
         } else null
         val body = parseBlock()
-        return Stmt.FuncStmt(annotations, name, params, returnType, body)
+        return Stmt.FuncStmt(annotations, name, params, returnType, body, isAsync)
     }
 
     private fun parseType(): Token {
@@ -523,6 +532,37 @@ class Parser(private val tokens: List<Token>) {
             TokenType.KW_NOT -> Expr.UnaryExpr(token, parseExpression(90))
             TokenType.INCREMENT -> Expr.UnaryExpr(token, parseExpression(90))
             TokenType.DECREMENT -> Expr.UnaryExpr(token, parseExpression(90))
+            TokenType.KW_AWAIT -> Expr.AwaitExpr(parseExpression(90))
+            TokenType.KW_SPAWN -> {
+                // spawn [virtual] expr
+                val isVirtual = match(TokenType.KW_VIRTUAL)
+                Expr.SpawnExpr(parseExpression(90), isVirtual)
+            }
+            TokenType.KW_ASYNC -> {
+                // async (params) -> { body } - async lambda
+                if (check(TokenType.L_PAREN) && isLambdaAhead()) {
+                    val params = mutableListOf<Param>()
+                    if (!check(TokenType.R_PAREN)) {
+                        do {
+                            val paramAnnotations = emptyList<Expr.AnnotationExpr>()
+                            val paramName = consume(TokenType.IDENTIFIER, "Expected parameter name")
+                            val paramType = if (match(TokenType.COLON)) {
+                                consume(TokenType.IDENTIFIER, "Expected type")
+                            } else null
+                            val defaultValue = if (match(TokenType.ASSIGN)) {
+                                parseExpression(0)
+                            } else null
+                            params.add(Param(paramAnnotations, paramName, paramType, defaultValue))
+                        } while (match(TokenType.COMMA))
+                    }
+                    consume(TokenType.R_PAREN, "Expected ')'")
+                    consume(TokenType.ARROW, "Expected '->' after lambda params")
+                    val body = parseBlock()
+                    Expr.LambdaExpr(params, body, isAsync = true)
+                } else {
+                    throw error(token, "Expected async lambda expression")
+                }
+            }
             TokenType.L_BRACE -> {
                 // Map literal or set literal in expression position
                 // { key: value, ... } → Map

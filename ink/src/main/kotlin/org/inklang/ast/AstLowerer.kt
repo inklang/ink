@@ -651,7 +651,7 @@ open class AstLowerer {
             val funcReg = lowerExpr(expr.callee, freshReg())
             val argRegs = expr.arguments.map { lowerExpr(it, freshReg()) }
             if (isAsyncCall) {
-                emit(AsyncCallInstr(dst, funcReg))
+                emit(AsyncCallInstr(dst, funcReg, argRegs))
             } else {
                 emit(Call(dst, funcReg, argRegs))
             }
@@ -816,9 +816,12 @@ open class AstLowerer {
             dst
         }
         is Expr.SpawnExpr -> {
-            // spawn [virtual] expr - lower to SpawnInstr
-            val funcReg = lowerExpr(expr.expr, freshReg())
-            emit(IrInstr.SpawnInstr(dst, funcReg, expr.virtual))
+            // spawn [virtual] expr - expr is a CallExpr to spawn
+            val callExpr = expr.expr as? Expr.CallExpr
+                ?: error("spawn requires a call expression")
+            val funcReg = lowerExpr(callExpr.callee, freshReg())
+            val argRegs = callExpr.arguments.map { lowerExpr(it, freshReg()) }
+            emit(IrInstr.SpawnInstr(dst, funcReg, argRegs, expr.virtual))
             dst
         }
         is Expr.ThrowExpr -> {

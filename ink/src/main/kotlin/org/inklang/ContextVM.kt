@@ -691,6 +691,16 @@ class ContextVM(
                     frames.last().regs[returnDst] = returnVal
                 }
             }
+            OpCode.AWAIT -> {
+                // In async function body, await blocks the virtual thread (cheap with Loom)
+                val task = frame.regs[src1] as? Value.Task
+                    ?: throw ScriptException("Cannot await non-Task value")
+                try {
+                    frame.regs[dst] = task.deferred.join()
+                } catch (e: Throwable) {
+                    frame.regs[dst] = Value.String(e.message ?: "Unknown error")
+                }
+            }
             OpCode.NEW_ARRAY -> {
                 val count = imm
                 val elements = (0 until count).mapNotNull { frame.argBuffer.removeFirstOrNull() }

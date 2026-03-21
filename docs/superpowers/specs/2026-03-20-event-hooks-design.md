@@ -98,7 +98,30 @@ on block_break(event, block, player) {
 - `event.cancel()` stops propagation
 - Handler runs to completion or until cancelled
 
-### 3.2 Cancellation
+### 3.2 Registration Placement
+
+`on` handlers can be registered at:
+
+- **Module level** — registers immediately when the script loads
+- **Inside `if` blocks** — conditional registration, evaluated at module load time
+
+```ink
+// Module level — always registered
+on player_join(event, player) {
+    print("Welcome!")
+}
+
+// Conditional — registered only if true at load time
+if config.enable_greeting {
+    on player_join(event, player) {
+        player.sendMessage("Hello!")
+    }
+}
+```
+
+**Nested `on` inside another `on` handler is not supported.** Dynamic registration (registering handlers from within other handlers) is out of scope for now.
+
+### 3.3 Cancellation
 
 ```ink
 on player_join(event, player) {
@@ -112,11 +135,20 @@ on player_join(event, player) {
 - Return values do not control cancellation
 - Cancelling skips remaining handlers for that event
 
-### 3.3 Execution Order
+### 3.4 Execution Order
 
 - Handlers fire in **registration order**
 - If a handler calls `cancel()`, remaining handlers for that event are skipped
 - Handler execution is **synchronous**
+
+### 3.5 Exception Handling
+
+If a handler throws an exception:
+1. That handler stops executing
+2. Remaining handlers for the same event are still attempted (unless cancelled)
+3. The exception is propagated to the runtime's exception handler (logged on Paper)
+
+The runtime is responsible for bridging synchronous Ink handler execution to async platform events (e.g., Paper's `AsyncPlayerChatEvent`). Thread-safety and event-queue semantics are runtime-defined.
 
 ---
 
@@ -144,7 +176,18 @@ Runtime provides an `events` registry:
 ```ink
 events.list()                    // returns [player_join, player_quit, ...]
 events.exists("player_join")    // true/false
-events.info("player_join")      // returns parameter types
+events.info("player_join")      // returns { name: String, parameters: [{ name: String, type: String }] }
+```
+
+Example `events.info("player_join")`:
+```ink
+{
+    name: "player_join",
+    parameters: [
+        { name: "event", type: "Event" },
+        { name: "player", type: "Player" }
+    ]
+}
 ```
 
 ---
@@ -154,10 +197,11 @@ events.info("player_join")      // returns parameter types
 | Error                              | Message Example                                                    |
 |------------------------------------|---------------------------------------------------------------------|
 | Unknown event                      | `RuntimeError: Unknown event 'player_jon'. Available: player_join, ...` |
-| Wrong parameter count              | `RuntimeError: Event 'player_join' expects 2 parameters, got 3`   |
+| Wrong parameter count              | `RuntimeError: Event 'player_join' expects 3 parameters (including event), got 2` |
 | Wrong parameter types              | `RuntimeError: Parameter 2 of 'player_join' must be Player, got Block` |
 | Event not supported on platform   | `RuntimeError: Event 'server_start' is not supported on Hytale runtime` |
 | Cancel on non-cancellable event   | `RuntimeError: Event 'server_start' cannot be cancelled`         |
+| Handler throws                    | Exception propagated to runtime handler; other handlers still attempted |
 
 ---
 
@@ -183,10 +227,6 @@ Runtimes must implement:
 5. **`events` registry** — implement `events.list()`, `events.exists()`, `events.info()`
 
 ---
-
-## 9. Open Questions
-
-None currently. All decisions have been made and recorded in this spec.
 
 ---
 

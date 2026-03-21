@@ -118,6 +118,7 @@ Virtual Thread: VM.execute() as event loop
 class VM {
     val globals = mutableMapOf<String, Value>(...)
     private val suspendedFrames = mutableMapOf<CompletableFuture<Value>, CallFrame>()
+    private val completionQueue = LinkedBlockingQueue<CompletableFuture<Value>>()
     private val executorService = Executors.newCachedThreadPool()
 
     data class CallFrame(
@@ -154,6 +155,10 @@ class VM {
                         }
                         val future = (task as Value.Task).deferred
                         suspendedFrames[future] = frame
+                        // Register completion callback to unblock event loop
+                        future.whenComplete { result, error ->
+                            completionQueue.put(future)
+                        }
                         frames.removeLast()
                         break  // exit inner loop, event loop takes over
                     }
@@ -225,8 +230,8 @@ class VM {
 
             // Event loop: wait for any suspended frame to complete
             if (frames.isEmpty() && suspendedFrames.isNotEmpty()) {
-                // Wait for any future to complete (using CompletableFuture.orTimeout)
-                val completed = waitForAnyFuture(suspendedFrames.keys)
+                // Block on completion queue (cheap on virtual thread)
+                val completed = completionQueue.take()
                 val resumedFrame = suspendedFrames.remove(completed)!!
 
                 // Get result from future
@@ -256,13 +261,11 @@ class VM {
 
 ### Async Function Execution
 
-`async fn` bodies **remain as bytecode** — they compile to chunks like regular functions. The difference is call semantics:
+`async fn` bodies **remain as bytecode** — they compile to chunks like regular functions.
 
-- `ASYNC_CALL` launches the async function's bytecode in a **new virtual thread**
-- The async function runs its bytecode until it hits `AWAIT` or completes
-- On `AWAIT`, the async VM instance parks its frame and waits for the future
-- On completion, the async VM resumes and eventually calls `task.complete(result)`
-- `ASYNC_CALL` stores the Task immediately and returns — calling frame continues executing
+**Two different await mechanisms:**
+1. **VM await (main script):** parks frame in `suspendedFrames`, event loop handles completion via `completionQueue`
+2. **Async function await:** runs on its own virtual thread, `deferred.join()` blocks that thread (cheap)
 
 ```kotlin
 private fun runAsyncFunction(func: Value.Function, completion: CompletableFuture<Value>): Value {
@@ -283,8 +286,8 @@ private fun runAsyncFunction(func: Value.Function, completion: CompletableFuture
             OpCode.AWAIT -> {
                 val task = frame.regs[src1] as? Value.Task
                     ?: error("Cannot await non-Task value")
-                // For simplicity, await blocks the virtual thread directly
-                // (this is the async function's own thread, not the VM thread)
+                // Blocks this virtual thread (cheap - platform thread returned to pool)
+                // This is fine because this IS the async function's own thread
                 try {
                     frame.regs[dst] = task.deferred.join()
                 } catch (e: Throwable) {
@@ -305,6 +308,32 @@ private fun runAsyncFunction(func: Value.Function, completion: CompletableFuture
         }
     }
     return Value.Null
+}
+```
+
+### ASYNC_CALL Semantics
+
+`ASYNC_CALL` launches the async function's bytecode in a **new virtual thread**:
+- Returns `Task<CompletableFuture>` immediately
+- Calling frame continues executing while async function runs
+- Caller must `await` the Task to get the result
+
+```kotlin
+ASYNC_CALL -> {
+    val func = frame.regs[src1] as Value.Function
+    val task = CompletableFuture<Value>()
+
+    Thread.startVirtualThread {
+        try {
+            val result = runAsyncFunction(func, task)
+            task.complete(result)
+        } catch (e: Throwable) {
+            task.completeExceptionally(e)
+        }
+    }
+
+    frame.regs[dst] = Value.Task(task)
+    // VM continues to next instruction while coroutine runs
 }
 ```
 

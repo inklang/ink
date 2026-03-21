@@ -4,6 +4,7 @@ import org.inklang.lang.Value.*
 import org.inklang.lang.getStringMethod
 
 fun valueToString(v: Value): String = when (v) {
+    is Value.Boolean -> v.value.toString()
     is Value.Instance -> {
         val items = v.fields["__items"]
         val entries = v.fields["__entries"]

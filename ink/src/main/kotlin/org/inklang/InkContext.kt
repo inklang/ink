@@ -1,6 +1,7 @@
 package org.inklang
 
 import org.inklang.lang.Value
+import org.inklang.ContextVM
 
 /**
  * Context interface that runtime hosts implement.
@@ -42,4 +43,7 @@ interface InkContext {
 
     /** Check if this context supports plugins (has lifecycle) */
     fun supportsLifecycle(): Boolean = true
+
+    /** Set the VM instance for this context. Called by PluginRuntime. */
+    fun setVM(vm: ContextVM)
 }

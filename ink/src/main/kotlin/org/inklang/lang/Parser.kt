@@ -100,13 +100,34 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.ConfigStmt(name, fields)
     }
 
+    private fun parseAnnotationDecl(): Stmt {
+        consume(TokenType.KW_ANNOTATION, "Expected 'annotation'")
+        val name = consume(TokenType.IDENTIFIER, "Expected annotation name")
+        consume(TokenType.L_BRACE, "Expected '{'")
+        val fields = mutableListOf<Stmt.AnnotationField>()
+        while (!check(TokenType.R_BRACE) && !isAtEnd()) {
+            val fieldName = consume(TokenType.IDENTIFIER, "Expected field name")
+            consume(TokenType.COLON, "Expected ':' after field name")
+            val fieldType = parseType()
+            val defaultValue = if (match(TokenType.ASSIGN)) parseExpression(0) else null
+            if (check(TokenType.SEMICOLON)) advance()
+            match(TokenType.COMMA) // consume optional comma between fields
+            fields.add(Stmt.AnnotationField(fieldName, fieldType, defaultValue))
+        }
+        consume(TokenType.R_BRACE, "Expected '}'")
+        return Stmt.AnnotationDeclStmt(name, fields)
+    }
+
     private fun parseStmt(): Stmt {
+        // Check for annotations first - they may appear before any statement keyword
+        val leadingAnnotations = if (check(TokenType.AT)) parseAnnotations() else emptyList()
+
         return when {
             check(TokenType.KW_IMPORT) -> parseImport()
-            check(TokenType.KW_LET) || check(TokenType.KW_CONST) -> parseVar()
+            check(TokenType.KW_LET) || check(TokenType.KW_CONST) -> parseVar(leadingAnnotations)
             check(TokenType.KW_IF) -> parseIf()
-            check(TokenType.KW_CLASS) -> parseClass()
-            check(TokenType.KW_FN) -> parseFunc()
+            check(TokenType.KW_CLASS) -> parseClass(leadingAnnotations)
+            check(TokenType.KW_FN) -> parseFunc(leadingAnnotations)
             check(TokenType.KW_RETURN) -> parseReturn()
             check(TokenType.KW_BREAK) -> {
                 advance();
@@ -121,6 +142,7 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KW_ENUM) -> parseEnum()
             check(TokenType.KW_TABLE) -> parseTable()
             check(TokenType.KW_CONFIG) -> parseConfig()
+            check(TokenType.KW_ANNOTATION) -> parseAnnotationDecl()
             else -> {
                 val expr = parseExpression(0)
                 if (check(TokenType.SEMICOLON)) advance()
@@ -168,8 +190,13 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.ForRangeStmt(variable, iterable, body)
     }
 
-    private fun parseFunc(): Stmt {
-        val annotations = parseAnnotations()
+    private fun parseFunc(leadingAnnotations: List<Expr.AnnotationExpr> = emptyList()): Stmt {
+        // Use leading annotations if provided, otherwise parse them (for when called directly)
+        val annotations = if (leadingAnnotations.isNotEmpty()) {
+            leadingAnnotations
+        } else {
+            parseAnnotations()
+        }
         consume(TokenType.KW_FN, "Expected 'fn'")
         val name = consume(TokenType.IDENTIFIER, "Expected function name")
         consume(TokenType.L_PAREN, "Expected '('")
@@ -224,8 +251,13 @@ class Parser(private val tokens: List<Token>) {
         }
     }
 
-    private fun parseClass(): Stmt {
-        val annotations = parseAnnotations()
+    private fun parseClass(leadingAnnotations: List<Expr.AnnotationExpr> = emptyList()): Stmt {
+        // Use leading annotations if provided, otherwise parse them (for when called directly)
+        val annotations = if (leadingAnnotations.isNotEmpty()) {
+            leadingAnnotations
+        } else {
+            parseAnnotations()
+        }
         consume(TokenType.KW_CLASS, "Expected class")
         val name = consume(TokenType.IDENTIFIER, "Expected identifier")
         val superClass = if (match(TokenType.KW_EXTENDS)) {
@@ -254,8 +286,13 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.BlockStmt(stmts)
     }
 
-    private fun parseVar(): Stmt {
-        val annotations = parseAnnotations()
+    private fun parseVar(leadingAnnotations: List<Expr.AnnotationExpr> = emptyList()): Stmt {
+        // Use leading annotations if provided, otherwise parse them (for when called directly)
+        val annotations = if (leadingAnnotations.isNotEmpty()) {
+            leadingAnnotations
+        } else {
+            parseAnnotations()
+        }
         val keyword = advance()
         val name = consume(TokenType.IDENTIFIER, "Expected name")
         val value = if (match(TokenType.ASSIGN)) parseExpression(0) else null
@@ -590,7 +627,18 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun parseAnnotations(): List<Expr.AnnotationExpr> {
         val annotations = mutableListOf<Expr.AnnotationExpr>()
-        while (match(TokenType.AT)) {
+
+        while (true) {
+            // Consume any ASI-inserted semicolons before checking for next annotation
+            // This handles cases like: @inline(level: 2) \n @pure \n fn foo()
+            // where ASI inserts ; after the first )
+            match(TokenType.SEMICOLON)
+
+            if (!match(TokenType.AT)) {
+                // No more annotations
+                break
+            }
+
             val nameToken = consume(TokenType.IDENTIFIER, "Expected annotation name after @")
             val name = nameToken.lexeme
             val args = mutableMapOf<String, Expr>()

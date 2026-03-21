@@ -15,6 +15,8 @@ class AstLowerer {
     private var breakLabel: IrLabel? = null
     private var nextLabel: IrLabel? = null
     private var lambdaCounter = 0
+    // Class fields accessible via 'self.fieldname' within methods
+    internal val fields = mutableSetOf<String>()
 
     private fun freshReg(): Int = regCounter++
     private fun freshLabel(): IrLabel = IrLabel(labelCounter++)
@@ -380,8 +382,53 @@ class AstLowerer {
     private fun lowerClass(stmt: Stmt.ClassStmt) {
         val className = stmt.name.lexeme
 
-        // Lower each method with self as implicit first parameter
+        // Collect field names and initializers from VarStmt members
+        val fieldNames = mutableSetOf<String>()
+        val fieldInitializers = mutableListOf<Pair<String, Expr?>>()
+        for (member in stmt.body.stmts) {
+            if (member is Stmt.VarStmt) {
+                fieldNames.add(member.name.lexeme)
+                fieldInitializers.add(member.name.lexeme to member.value)
+            }
+        }
+
+        // Check if user defined an init method
+        var hasUserInit = false
+        for (member in stmt.body.stmts) {
+            if (member is Stmt.FuncStmt && member.name.lexeme == "init") {
+                hasUserInit = true
+                break
+            }
+        }
+
+        // Map to store all methods (including implicit init)
         val methods = mutableMapOf<String, MethodInfo>()
+
+        // Generate implicit init method if there are fields but no user init
+        if (fieldInitializers.isNotEmpty() && !hasUserInit) {
+            val initLowerer = AstLowerer()
+            initLowerer.locals["self"] = 0
+            initLowerer.regCounter = 1
+            for ((fieldName, fieldValue) in fieldInitializers) {
+                val valueReg = initLowerer.freshReg()
+                if (fieldValue != null) {
+                    initLowerer.lowerExpr(fieldValue, valueReg)
+                } else {
+                    val nullIdx = initLowerer.addConstant(Value.Null)
+                    initLowerer.emit(IrInstr.LoadImm(valueReg, nullIdx))
+                }
+                initLowerer.emit(IrInstr.SetField(0, fieldName, valueReg))
+            }
+            val result = initLowerer.lower(emptyList())
+            methods["init"] = MethodInfo(
+                arity = 1,  // self only
+                instrs = result.instrs,
+                constants = result.constants,
+                defaultValues = emptyList()
+            )
+        }
+
+        // Lower each method with self as implicit first parameter
         for (member in stmt.body.stmts) {
             if (member is Stmt.FuncStmt) {
                 val methodLowerer = AstLowerer()
@@ -391,8 +438,32 @@ class AstLowerer {
                 for ((i, param) in member.params.withIndex()) {
                     methodLowerer.locals[param.name.lexeme] = i + 1
                 }
+                // Copy field names so method body can reference them
+                methodLowerer.fields.addAll(fieldNames)
                 methodLowerer.regCounter = member.params.size + 1  // +1 for self
-                val result = methodLowerer.lower(member.body.stmts)
+
+                var result: LoweredResult
+                if (member.name.lexeme == "init" && fieldInitializers.isNotEmpty()) {
+                    // Clear and regenerate: field init first, then user init body
+                    methodLowerer.instrs.clear()
+                    // Field initialization
+                    val selfReg = methodLowerer.locals["self"] ?: 0
+                    for ((fieldName, fieldValue) in fieldInitializers) {
+                        val valueReg = methodLowerer.freshReg()
+                        if (fieldValue != null) {
+                            methodLowerer.lowerExpr(fieldValue, valueReg)
+                        } else {
+                            val nullIdx = methodLowerer.addConstant(Value.Null)
+                            methodLowerer.emit(IrInstr.LoadImm(valueReg, nullIdx))
+                        }
+                        methodLowerer.emit(IrInstr.SetField(selfReg, fieldName, valueReg))
+                    }
+                    // User init body (skip if already processed - this is the init method)
+                    methodLowerer.lower(member.body.stmts)
+                    result = LoweredResult(methodLowerer.instrs, methodLowerer.constants, methodLowerer.functions)
+                } else {
+                    result = methodLowerer.lower(member.body.stmts)
+                }
 
                 // Lower default value expressions for method params
                 val defaultValues = member.params.map { param ->
@@ -430,6 +501,11 @@ class AstLowerer {
             val reg = locals[expr.name.lexeme]
             if (reg != null) {
                 reg  // already in a register
+            } else if (expr.name.lexeme in fields) {
+                // Class field access: emit GetField(self, "fieldname")
+                val selfReg = locals["self"] ?: error("self not found for field access")
+                emit(IrInstr.GetField(dst, selfReg, expr.name.lexeme))
+                dst
             } else {
                 emit(LoadGlobal(dst, expr.name.lexeme))
                 dst
@@ -486,6 +562,9 @@ class AstLowerer {
                 val reg = locals[target.name.lexeme]
                 if (reg != null) {
                     emit(IrInstr.Move(reg, dst))
+                } else if (target.name.lexeme in fields) {
+                    val selfReg = locals["self"] ?: error("self not found for field assignment")
+                    emit(IrInstr.SetField(selfReg, target.name.lexeme, dst))
                 } else {
                     emit(StoreGlobal(target.name.lexeme, dst))
                 }
@@ -518,6 +597,15 @@ class AstLowerer {
                             val valueReg = lowerExpr(expr.value, freshReg())
                             emit(BinaryOp(reg, binaryOp, reg, valueReg))
                             reg
+                        } else if (expr.target.name.lexeme in fields) {
+                            // Field compound assignment: load field, op, set field
+                            val selfReg = locals["self"] ?: error("self not found for field assignment")
+                            val tmpReg = freshReg()
+                            emit(IrInstr.GetField(tmpReg, selfReg, expr.target.name.lexeme))
+                            val valueReg = lowerExpr(expr.value, freshReg())
+                            emit(BinaryOp(tmpReg, binaryOp, tmpReg, valueReg))
+                            emit(IrInstr.SetField(selfReg, expr.target.name.lexeme, tmpReg))
+                            tmpReg
                         } else {
                             // Global variable - load, op, store
                             val tmpReg = freshReg()
@@ -569,6 +657,12 @@ class AstLowerer {
                         if (reg != null) {
                             lowerExpr(expr.value, reg)
                             reg
+                        } else if (expr.target.name.lexeme in fields) {
+                            // Field assignment: emit SetField(self, "fieldname", value)
+                            val selfReg = locals["self"] ?: error("self not found for field assignment")
+                            val src = lowerExpr(expr.value, freshReg())
+                            emit(IrInstr.SetField(selfReg, expr.target.name.lexeme, src))
+                            src
                         } else {
                             val src = lowerExpr(expr.value, freshReg())
                             emit(StoreGlobal(expr.target.name.lexeme, src))

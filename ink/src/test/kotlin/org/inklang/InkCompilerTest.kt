@@ -84,7 +84,7 @@ class InkCompilerTest {
         val source = """
             class Counter {
                 let count = 0;
-                fun increment() {
+                fn increment() {
                     count = count + 1;
                 }
             }

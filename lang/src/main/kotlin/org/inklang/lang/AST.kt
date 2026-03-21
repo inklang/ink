@@ -84,9 +84,20 @@ sealed class Expr {
     data class ElvisExpr(val left: Expr, val right: Expr) : Expr()
 
     data class ThrowExpr(val value: Expr) : Expr()
+
+    // Annotation expression: @annotationName(arg1=value1, arg2=value2)
+    data class AnnotationExpr(
+        val name: String,
+        val args: Map<String, Expr>
+    ) : Expr()
 }
 
-data class Param(val name: Token, val type: Token?, val defaultValue: Expr? = null)
+data class Param(
+    val annotations: List<Expr.AnnotationExpr>,
+    val name: Token,
+    val type: Token?,
+    val defaultValue: Expr? = null
+)
 
 sealed class Stmt {
     data class ImportStmt(val namespace: Token) : Stmt()
@@ -96,15 +107,26 @@ sealed class Stmt {
         }
     }
 
-        data class ClassStmt(val name: Token, val superClass: Token?, val body: BlockStmt) : Stmt()
+        data class ClassStmt(
+            val annotations: List<Expr.AnnotationExpr>,
+            val name: Token,
+            val superClass: Token?,
+            val body: BlockStmt
+        ) : Stmt()
     data class ExprStmt(val expr: Expr) : Stmt()
     data class EnumStmt(val name: Token, val values: List<Token>) : Stmt()
-    data class VarStmt(val keyword: Token, val name: Token, val value: Expr?) : Stmt()
+    data class VarStmt(
+        val annotations: List<Expr.AnnotationExpr>,
+        val keyword: Token,
+        val name: Token,
+        val value: Expr?
+    ) : Stmt()
     data class BlockStmt(val stmts: List<Stmt>) : Stmt()
     data class IfStmt(val condition: Expr, val then: BlockStmt, val elseBranch: ElseBranch?) :
         Stmt()
 
     data class FuncStmt(
+        val annotations: List<Expr.AnnotationExpr>,
         val name: Token,
         val params: List<Param>,
         val returnType: Token?,
@@ -127,5 +149,9 @@ sealed class Stmt {
 
     data class TableField(val name: Token, val type: String?, val isKey: Boolean, val defaultValue: Expr?)
     data class TableStmt(val name: Token, val fields: List<TableField>) : Stmt()
+
+    // Annotation types
+    data class AnnotationField(val name: Token, val type: Token, val defaultValue: Expr?)
+    data class AnnotationDeclStmt(val name: Token, val fields: List<AnnotationField>) : Stmt()
 
 }

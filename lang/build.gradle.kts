@@ -3,11 +3,11 @@ plugins {
     application
 }
 
-group = "org.quill"
+group = "org.inklang"
 version = "1.0-SNAPSHOT"
 
 application {
-    mainClass.set("org.quill.MainKt")
+    mainClass.set("org.inklang.MainKt")
 }
 
 repositories {

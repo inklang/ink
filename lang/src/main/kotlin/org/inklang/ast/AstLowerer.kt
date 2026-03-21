@@ -157,6 +157,8 @@ class AstLowerer {
             locals[tableName] = playerReg
             emit(IrInstr.StoreGlobal(tableName, playerReg))
         }
+        // Annotation declarations are compile-time only - no IR emitted
+        is Stmt.AnnotationDeclStmt -> { /* no-op */ }
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {
@@ -679,5 +681,7 @@ class AstLowerer {
             emit(IrInstr.Throw(valueReg))
             dst  // unreachable, but for type consistency
         }
+        // AnnotationExpr should not appear at runtime - annotations are compile-time only
+        is Expr.AnnotationExpr -> error("AnnotationExpr should not appear in lowered IR")
     }
 }

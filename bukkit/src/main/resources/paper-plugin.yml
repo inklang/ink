@@ -1,0 +1,17 @@
+name: Ink
+version: '${project.version}'
+main: org.inklang.bukkit.InkBukkit
+api-version: '1.21'
+author: inklang
+description: A scripting language plugin for Minecraft servers
+
+commands:
+  ink:
+    description: Run Ink scripts
+    usage: /ink run <script>
+    permission: ink.use
+
+permissions:
+  ink.use:
+    description: Allows using Ink scripts
+    default: op

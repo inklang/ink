@@ -77,6 +77,8 @@ enum class TokenType {
     INTERPOLATION_START,  // ${
     INTERPOLATION_END,    // } (closing interpolation)
     DOLLAR,               // $ (for error reporting if not followed by {)
+    AT,                   // @ (annotation marker)
+    KW_ANNOTATION,        // annotation keyword
     EOF
 }
 

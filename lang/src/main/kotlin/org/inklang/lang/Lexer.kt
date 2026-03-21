@@ -55,7 +55,8 @@ private class Lexer(val source: String) {
             "try" to TokenType.KW_TRY,
             "catch" to TokenType.KW_CATCH,
             "finally" to TokenType.KW_FINALLY,
-            "throw" to TokenType.KW_THROW
+            "throw" to TokenType.KW_THROW,
+            "annotation" to TokenType.KW_ANNOTATION
         )
     }
 
@@ -85,6 +86,7 @@ private class Lexer(val source: String) {
                 '.' -> if (match('.')) addToken(TokenType.DOT_DOT) else addToken(TokenType.DOT)
                 ';' -> addToken(TokenType.SEMICOLON)
                 ':' -> addToken(TokenType.COLON)
+                '@' -> addToken(TokenType.AT)
 
                 // Math & Operators
                 '+' -> when {

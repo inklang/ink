@@ -169,6 +169,7 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun parseFunc(): Stmt {
+        val annotations = parseAnnotations()
         consume(TokenType.KW_FN, "Expected 'fn'")
         val name = consume(TokenType.IDENTIFIER, "Expected function name")
         consume(TokenType.L_PAREN, "Expected '('")
@@ -177,6 +178,8 @@ class Parser(private val tokens: List<Token>) {
 
         if (!check(TokenType.R_PAREN)) {
             do {
+                // Parse parameter annotations
+                val paramAnnotations = parseAnnotations()
                 val paramName = consume(TokenType.IDENTIFIER, "Expected parameter name")
                 val paramType = if (match(TokenType.COLON)) consume(
                     TokenType.IDENTIFIER,
@@ -198,7 +201,7 @@ class Parser(private val tokens: List<Token>) {
                     null
                 }
 
-                params.add(Param(paramName, paramType, defaultValue))
+                params.add(Param(paramAnnotations, paramName, paramType, defaultValue))
             } while (match(TokenType.COMMA))
         }
         consume(TokenType.R_PAREN, "Expected ')'")
@@ -206,7 +209,7 @@ class Parser(private val tokens: List<Token>) {
             parseType()
         } else null
         val body = parseBlock()
-        return Stmt.FuncStmt(name, params, returnType, body)
+        return Stmt.FuncStmt(annotations, name, params, returnType, body)
     }
 
     private fun parseType(): Token {
@@ -222,13 +225,14 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun parseClass(): Stmt {
+        val annotations = parseAnnotations()
         consume(TokenType.KW_CLASS, "Expected class")
         val name = consume(TokenType.IDENTIFIER, "Expected identifier")
         val superClass = if (match(TokenType.KW_EXTENDS)) {
             consume(TokenType.IDENTIFIER, "Expected identifier")
         } else null
         val body = parseBlock()
-        return Stmt.ClassStmt(name, superClass, body)
+        return Stmt.ClassStmt(annotations, name, superClass, body)
     }
 
     private fun parseIf(): Stmt {
@@ -251,11 +255,12 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun parseVar(): Stmt {
+        val annotations = parseAnnotations()
         val keyword = advance()
         val name = consume(TokenType.IDENTIFIER, "Expected name")
         val value = if (match(TokenType.ASSIGN)) parseExpression(0) else null
         if (check(TokenType.SEMICOLON)) advance()
-        return Stmt.VarStmt(keyword, name, value)
+        return Stmt.VarStmt(annotations, keyword, name, value)
     }
 
     private fun parseImport(): Stmt {
@@ -466,6 +471,8 @@ class Parser(private val tokens: List<Token>) {
                     val params = mutableListOf<Param>()
                     if (!check(TokenType.R_PAREN)) {
                         do {
+                            // Lambda parameters don't support annotations (yet)
+                            val paramAnnotations = emptyList<Expr.AnnotationExpr>()
                             val paramName = consume(TokenType.IDENTIFIER, "Expected parameter name")
                             val paramType = if (match(TokenType.COLON)) {
                                 consume(TokenType.IDENTIFIER, "Expected type")
@@ -473,7 +480,7 @@ class Parser(private val tokens: List<Token>) {
                             val defaultValue = if (match(TokenType.ASSIGN)) {
                                 parseExpression(0)
                             } else null
-                            params.add(Param(paramName, paramType, defaultValue))
+                            params.add(Param(paramAnnotations, paramName, paramType, defaultValue))
                         } while (match(TokenType.COMMA))
                     }
                     consume(TokenType.R_PAREN, "Expected ')'")
@@ -576,6 +583,36 @@ class Parser(private val tokens: List<Token>) {
     }
 
     // --- Helpers ---
+
+    /**
+     * Parse zero or more annotations before a declaration.
+     * Returns a list of AnnotationExpr.
+     */
+    private fun parseAnnotations(): List<Expr.AnnotationExpr> {
+        val annotations = mutableListOf<Expr.AnnotationExpr>()
+        while (match(TokenType.AT)) {
+            val nameToken = consume(TokenType.IDENTIFIER, "Expected annotation name after @")
+            val name = nameToken.lexeme
+            val args = mutableMapOf<String, Expr>()
+
+            // Parse optional (arg1, arg2, ...) — named arguments only
+            if (match(TokenType.L_PAREN)) {
+                if (!check(TokenType.R_PAREN)) {
+                    do {
+                        val argName = consume(TokenType.IDENTIFIER, "Expected named argument name")
+                        val argNameStr = argName.lexeme
+                        consume(TokenType.COLON, "Expected ':' after argument name")
+                        val argValue = parseExpression(0)
+                        args[argNameStr] = argValue
+                    } while (match(TokenType.COMMA))
+                }
+                consume(TokenType.R_PAREN, "Expected ')' after annotation arguments")
+            }
+
+            annotations.add(Expr.AnnotationExpr(name, args))
+        }
+        return annotations
+    }
 
     /** Lookahead to check if current L_PAREN starts a lambda: (params) -> { ... } */
     private fun isLambdaAhead(): Boolean {

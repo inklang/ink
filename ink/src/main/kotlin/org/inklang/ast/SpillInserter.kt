@@ -114,7 +114,9 @@ class SpillInserter {
                 is IrInstr.Next,
                 is IrInstr.Spill,
                 is IrInstr.Unspill,
-                is IrInstr.Throw      -> instr
+                is IrInstr.Throw -> instr
+                is IrInstr.RegisterEventHandler,
+                is IrInstr.InvokeEventHandler -> instr
             }
 
             result.addAll(preInstrs)

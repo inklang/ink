@@ -234,7 +234,9 @@ class IrCompiler {
                 }
                 is IrInstr.Spill   -> chunk.write(OpCode.SPILL, imm = instr.slot, src1 = instr.src)
                 is IrInstr.Unspill -> chunk.write(OpCode.UNSPILL, dst = instr.dst, imm = instr.slot)
-                is IrInstr.Throw   -> chunk.write(OpCode.THROW, src1 = instr.src)
+                is IrInstr.Throw -> chunk.write(OpCode.THROW, src1 = instr.src)
+                is IrInstr.RegisterEventHandler -> { /* registered at runtime, no bytecode */ }
+                is IrInstr.InvokeEventHandler -> { /* invoked at runtime, no bytecode */ }
             }
         }
 

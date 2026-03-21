@@ -262,4 +262,34 @@ class InkCompilerTest {
         script.execute(context)
         assertEquals(listOf("anonymous"), context.prints)
     }
+
+    @Test
+    fun `function with default parameter uses default when not provided`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            fn greet(name: String = "World") {
+                print(name)
+            }
+            greet()
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("World"), context.prints)
+    }
+
+    @Test
+    fun `function with default parameter uses provided value`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            fn greet(name: String = "World") {
+                print(name)
+            }
+            greet("Alice")
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("Alice"), context.prints)
+    }
 }

@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
-    implementation(project(":lang"))
+    implementation(project(":ink"))
     implementation("org.xerial:sqlite-jdbc:3.45.1.0")
     implementation("org.json:json:20231013")
     testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")

@@ -39,6 +39,9 @@ class InkCompiler {
             val parser = Parser(tokens)
             val statements = parser.parse()
 
+            // Check annotations (before constant folding)
+            AnnotationChecker().check(statements)
+
             // Constant fold
             val folder = ConstantFolder()
             val folded = statements.map { folder.foldStmt(it) }

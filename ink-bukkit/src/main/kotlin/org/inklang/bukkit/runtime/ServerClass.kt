@@ -86,17 +86,17 @@ object ServerClass {
                 },
 
                 // Server operations
-                "reload" to Value.NativeFunction { args ->
+                "reload" to Value.NativeFunction { _ ->
                     server.reload()
                     Value.Null
                 },
-                "shutdown" to Value.NativeFunction { args ->
+                "shutdown" to Value.NativeFunction { _ ->
                     server.shutdown()
                     Value.Null
                 },
 
                 // Plugin manager
-                "plugin_manager" to Value.NativeFunction { args ->
+                "plugin_manager" to Value.NativeFunction { _ ->
                     Value.Instance(
                         ClassDescriptor(
                             name = "PluginManager",
@@ -120,24 +120,24 @@ object ServerClass {
                 },
 
                 // Scheduler - simplified, just returns a task ID placeholder
-                "scheduler" to Value.NativeFunction { args ->
+                "scheduler" to Value.NativeFunction { _ ->
                     Value.Instance(
                         ClassDescriptor(
                             name = "Scheduler",
                             superClass = null,
                             methods = mapOf(
-                                "run_task" to Value.NativeFunction { args ->
+                                "run_task" to Value.NativeFunction { _ ->
                                     // For now, scheduler just returns a placeholder ID
                                     // Full async task support requires closure integration
                                     Value.Int(-1)
                                 },
-                                "run_task_async" to Value.NativeFunction { args ->
+                                "run_task_async" to Value.NativeFunction { _ ->
                                     Value.Int(-1)
                                 },
-                                "cancel_task" to Value.NativeFunction { args ->
+                                "cancel_task" to Value.NativeFunction { _ ->
                                     Value.Null
                                 },
-                                "cancel_all_tasks" to Value.NativeFunction { args ->
+                                "cancel_all_tasks" to Value.NativeFunction { _ ->
                                     Value.Null
                                 }
                             )

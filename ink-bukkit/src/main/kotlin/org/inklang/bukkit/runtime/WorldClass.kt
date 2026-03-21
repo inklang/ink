@@ -32,12 +32,16 @@ object WorldClass {
                     Value.Null
                 },
                 "set_storm" to Value.NativeFunction { args ->
-                    val storm = args.getOrNull(1)?.let { it != Value.Boolean.FALSE } ?: true
+                    val storm = args.getOrNull(1)?.let {
+                        if (it is Value.Boolean) it.value else true
+                    } ?: true
                     world.setStorm(storm)
                     Value.Null
                 },
                 "set_thundering" to Value.NativeFunction { args ->
-                    val thunder = args.getOrNull(1)?.let { it != Value.Boolean.FALSE } ?: true
+                    val thunder = args.getOrNull(1)?.let {
+                        if (it is Value.Boolean) it.value else true
+                    } ?: true
                     world.setThundering(thunder)
                     Value.Null
                 },

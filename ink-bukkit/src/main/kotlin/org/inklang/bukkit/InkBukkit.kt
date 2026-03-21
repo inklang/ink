@@ -132,6 +132,10 @@ class InkBukkit : JavaPlugin() {
             val preloadedConfigs = compiled.preloadConfigs(scriptDir.absolutePath)
             vm.setGlobals(preloadedConfigs)
 
+            // Add Paper/Bukkit globals (player, server, etc.)
+            val paperGlobals = PaperGlobals.getGlobals(sender, server)
+            vm.setGlobals(paperGlobals)
+
             vm.execute(compiled.getChunk())
             sender.sendMessage("§aScript executed successfully")
         } catch (e: UnsupportedOperationException) {

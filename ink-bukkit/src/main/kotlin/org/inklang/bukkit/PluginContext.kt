@@ -48,11 +48,19 @@ class PluginContext(
     }
 
     override fun onEnable(script: InkScript) {
-        script.execute(this)
+        val vm = org.inklang.ContextVM(this)
+        // Add Paper/Bukkit globals (player, server, etc.)
+        val paperGlobals = PaperGlobals.getGlobals(sender, plugin.server)
+        vm.setGlobals(paperGlobals)
+        vm.execute(script.getChunk())
     }
 
     override fun onDisable(script: InkScript) {
-        script.execute(this)
+        val vm = org.inklang.ContextVM(this)
+        // Add Paper/Bukkit globals (player, server, etc.)
+        val paperGlobals = PaperGlobals.getGlobals(sender, plugin.server)
+        vm.setGlobals(paperGlobals)
+        vm.execute(script.getChunk())
     }
 
     override fun supportsLifecycle(): Boolean = true

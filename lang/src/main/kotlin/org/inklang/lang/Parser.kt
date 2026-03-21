@@ -67,10 +67,16 @@ class Parser(private val tokens: List<Token>) {
         while (!check(TokenType.R_BRACE) && !isAtEnd()) {
             val isKey = match(TokenType.KW_KEY)
             val fieldName = consume(TokenType.IDENTIFIER, "Expected field name")
-            consume(TokenType.COLON, "Expected ':' after field name")
-            val fieldType = parseType()
+            // Type annotation is optional: `name` or `name: type`
+            val fieldType = if (match(TokenType.COLON)) {
+                val typeToken = parseType()
+                typeToken.lexeme
+            } else {
+                null
+            }
             val defaultValue = if (match(TokenType.ASSIGN)) parseExpression(0) else null
             if (check(TokenType.SEMICOLON)) advance()
+            if (check(TokenType.COMMA)) advance()
             fields.add(Stmt.TableField(fieldName, fieldType, isKey, defaultValue))
         }
         consume(TokenType.R_BRACE, "Expected '}'")
@@ -349,27 +355,25 @@ class Parser(private val tokens: List<Token>) {
                     val paren = consume(TokenType.R_PAREN, "Expected ')' after arguments")
                     Expr.CallExpr(expr, paren, args)
                 }
-                match(TokenType.DOT) -> {
-                    // Check for safe call (?.)
-                    if (match(TokenType.QUESTION)) {
-                        // Safe call: obj?.name
-                        val name = when {
-                            match(TokenType.IDENTIFIER) -> previous()
-                            match(TokenType.KW_HAS) -> previous()  // has can be used as method name
-                            match(TokenType.KW_IS) -> previous()    // is can be used as method name
-                            else -> throw error(peek(), "Expected field name after '?.'")
-                        }
-                        Expr.SafeCallExpr(expr, name)
-                    } else {
-                        // Regular property access: obj.name
-                        val name = when {
-                            match(TokenType.IDENTIFIER) -> previous()
-                            match(TokenType.KW_HAS) -> previous()  // has can be used as method name
-                            match(TokenType.KW_IS) -> previous()    // is can be used as method name
-                            else -> throw error(peek(), "Expected field name after '.'")
-                        }
-                        Expr.GetExpr(expr, name)
+                match(TokenType.QUESTION_DOT) -> {
+                    // Safe call: obj?.name
+                    val name = when {
+                        match(TokenType.IDENTIFIER) -> previous()
+                        match(TokenType.KW_HAS) -> previous()  // has can be used as method name
+                        match(TokenType.KW_IS) -> previous()    // is can be used as method name
+                        else -> throw error(peek(), "Expected field name after '?.'")
                     }
+                    Expr.SafeCallExpr(expr, name)
+                }
+                match(TokenType.DOT) -> {
+                    // Regular property access: obj.name
+                    val name = when {
+                        match(TokenType.IDENTIFIER) -> previous()
+                        match(TokenType.KW_HAS) -> previous()  // has can be used as method name
+                        match(TokenType.KW_IS) -> previous()    // is can be used as method name
+                        else -> throw error(peek(), "Expected field name after '.'")
+                    }
+                    Expr.GetExpr(expr, name)
                 }
                 match(TokenType.L_SQUARE) -> {
                     val index = parseExpression(0)

@@ -125,7 +125,7 @@ sealed class Stmt {
     data class ConfigField(val name: Token, val type: Token, val defaultValue: Expr?)
     data class ConfigStmt(val name: Token, val fields: List<ConfigField>) : Stmt()
 
-    data class TableField(val name: Token, val type: Token, val isKey: Boolean, val defaultValue: Expr?)
+    data class TableField(val name: Token, val type: String?, val isKey: Boolean, val defaultValue: Expr?)
     data class TableStmt(val name: Token, val fields: List<TableField>) : Stmt()
 
 }

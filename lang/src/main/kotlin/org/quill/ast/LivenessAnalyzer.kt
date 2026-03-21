@@ -109,6 +109,8 @@ class LivenessAnalyzer {
                 is IrInstr.LoadClass -> define(instr.dst, idx)
                 is IrInstr.Spill   -> use(instr.src, idx)
                 is IrInstr.Unspill -> define(instr.dst, idx)
+                is IrInstr.RegisterEventHandler -> { /* no register effects */ }
+                is IrInstr.InvokeEventHandler -> { /* no register effects */ }
             }
         }
 

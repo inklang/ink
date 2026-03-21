@@ -38,6 +38,20 @@ sealed class IrInstr {
     object Next : IrInstr()
     data class Spill(val slot: Int, val src: Int) : IrInstr()    // spills[slot] = regs[src]
     data class Unspill(val dst: Int, val slot: Int) : IrInstr()  // regs[dst] = spills[slot]
+    // Register an event handler with the runtime event bus
+    data class RegisterEventHandler(
+        val eventName: String,
+        val handlerFuncIndex: Int,
+        val eventParamName: String,
+        val dataParamNames: List<String>
+    ) : IrInstr()
+    // Invoke a registered handler (used at runtime when events fire)
+    data class InvokeEventHandler(
+        val eventName: String,
+        val handlerIndex: Int,
+        val eventObjectReg: Int,
+        val dataArgRegs: List<Int>
+    ) : IrInstr()
 }
 
 data class MethodInfo(

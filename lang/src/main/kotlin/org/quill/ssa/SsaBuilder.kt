@@ -235,6 +235,8 @@ class SsaBuilder(
         is IrInstr.Next -> SsaInstr.Next
         is IrInstr.Spill   -> null  // Not converted to SSA
         is IrInstr.Unspill -> null  // Not converted to SSA
+        is IrInstr.RegisterEventHandler -> null  // Not converted to SSA
+        is IrInstr.InvokeEventHandler -> null  // Not converted to SSA
     }
 
     /**

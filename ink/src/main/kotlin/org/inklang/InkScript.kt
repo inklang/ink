@@ -13,6 +13,9 @@ class InkScript(
     private val chunk: Chunk,
     private val configDefinitions: Map<String, List<ConfigFieldDef>> = emptyMap()
 ) {
+    /** Exposes the compiled chunk for VM execution. */
+    fun getChunk(): Chunk = chunk
+
     /**
      * Pre-load all configs declared in this script from YAML files.
      * @param scriptDir The directory to look for config YAML files (e.g. "plugins/ink/scripts/")

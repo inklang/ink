@@ -118,6 +118,14 @@ Config values can be:
 - Loaded at `enable {}` execution time
 - Missing values fall back to defaults from the `config {}` block
 
+### Config File Locations
+
+For plugins: `plugins/ink/plugins/<pluginname>/config.yml`
+For scripts: `plugins/ink/scripts/<scriptname>/config.yml`
+
+Note: ConfigRuntime generates kebab-case filenames from PascalCase config names.
+`config MyPlugin {}` → `my-plugin.yml`
+
 ---
 
 ## Runtime Contexts

@@ -210,7 +210,7 @@ Parser desugars to binary `+` operations at parse time.
 Handled during lexing:
 - `\n` → newline
 - `\t` → tab
-- `\\` → backslash
+- `\` → backslash
 - `\"` → double quote
 
 ## Example Execution

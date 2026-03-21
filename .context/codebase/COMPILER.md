@@ -64,9 +64,9 @@ AssignExpr(target, op, value)
 // Operators
 BinaryExpr(left, op: Token, right)   // a + b, a and b, etc.
 UnaryExpr(op: Token, right)           // -a, not a, ++a
-TernaryExpr(condition, then, else)    // a ? b : c
-IsExpr(expr, type)                    // a is String
-HasExpr(target, field)               // obj has field
+TernaryExpr(condition, then, else)  // a ? b : c
+IsExpr(expr, type)                   // a is String
+HasExpr(target, field)              // obj has field
 
 // Field/index access
 GetExpr(obj, name: Token)            // obj.field

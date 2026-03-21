@@ -503,6 +503,31 @@ class AstLowerer {
             emit(IrInstr.HasCheck(dst, objReg, fieldName.value))
             dst
         }
+        is Expr.ElvisExpr -> {
+            // left ?? right desugars to:
+            // temp = left
+            // if (temp != null) goto end_label
+            // temp = right
+            // end_label:
+            // result = temp
+            val endLabel = freshLabel()
+            val tempReg = freshReg()
+            lowerExpr(expr.left, tempReg)
+            // Check if not null
+            val nullConstIdx = addConstant(Value.Null)
+            val nullTempReg = freshReg()
+            emit(LoadImm(nullTempReg, nullConstIdx))
+            val cmpReg = freshReg()
+            emit(BinaryOp(cmpReg, TokenType.BANG_EQ, tempReg, nullTempReg))
+            emit(JumpIfFalse(cmpReg, endLabel)) // if null, evaluate right
+            // Not null: jump to end, keeping tempReg value
+            emit(Jump(endLabel))
+            // Null: evaluate right into tempReg
+            lowerExpr(expr.right, tempReg)
+            emit(Label(endLabel))
+            emit(Move(dst, tempReg))
+            dst
+        }
         is Expr.SafeCallExpr -> {
             // obj?.name desugars to:
             // temp = obj

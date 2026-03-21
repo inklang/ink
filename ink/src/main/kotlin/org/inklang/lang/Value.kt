@@ -76,6 +76,11 @@ sealed class Value {
         override fun toString() = items.joinToString(", ", "(", ")")
     }
 
+    /** Wrapper for internal ArrayDeque storage (used by Deque class) */
+    data class InternalDeque(val items: ArrayDeque<Value> = ArrayDeque()) : Value() {
+        override fun toString() = items.joinToString(", ", "Deque(", ")")
+    }
+
     /**
      * Wrapper for a database table reference returned by db.from().
      * Allows method dispatch via GET_FIELD on the TableRef interface methods.

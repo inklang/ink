@@ -3,6 +3,7 @@ package org.inklang.bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.plugin.java.JavaPlugin
+import org.inklang.ContextVM
 import org.inklang.InkScript
 import org.inklang.InkCompiler
 import java.io.File
@@ -58,6 +59,7 @@ class InkBukkit : JavaPlugin() {
                 compiler.compile(script)
             }
             val scriptDir = File(dataFolder, "scripts")
+            scriptDir.mkdirs()
             val dbFile = File(dataFolder, "data.db")
             dbFile.parentFile?.mkdirs()
 
@@ -66,7 +68,13 @@ class InkBukkit : JavaPlugin() {
             val dbDriver = BukkitDb(dbFile.absolutePath)
 
             val context = BukkitContext(sender, this, ioDriver, jsonDriver, dbDriver)
-            compiled.execute(context)
+            val vm = ContextVM(context)
+
+            // Pre-load configs from YAML files before execution
+            val preloadedConfigs = compiled.preloadConfigs(scriptDir.absolutePath)
+            vm.setGlobals(preloadedConfigs)
+
+            vm.execute(compiled.getChunk())
             sender.sendMessage("§aScript executed successfully")
         } catch (e: Exception) {
             sender.sendMessage("§cError: ${e.message}")

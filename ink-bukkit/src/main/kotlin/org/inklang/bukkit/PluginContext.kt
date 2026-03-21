@@ -6,6 +6,7 @@ import org.inklang.InkIo
 import org.inklang.InkJson
 import org.inklang.InkDb
 import org.inklang.InkScript
+import org.inklang.lang.Value
 import java.io.File
 
 /**
@@ -32,6 +33,19 @@ class PluginContext(
     override fun io(): InkIo = io
     override fun json(): InkJson = json
     override fun db(): InkDb = db
+
+    override fun registerEventHandler(
+        eventName: String,
+        handlerFunc: Value.Function,
+        eventParamName: String,
+        dataParamNames: List<String>
+    ) {
+        // Event registration handled at compile time via VM's event registry
+    }
+
+    override fun fireEvent(eventName: String, event: Value.EventObject, data: List<Value?>): Boolean {
+        return false
+    }
 
     override fun onEnable(script: InkScript) {
         script.execute(this)

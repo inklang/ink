@@ -6,6 +6,7 @@ import org.inklang.InkIo
 import org.inklang.InkJson
 import org.inklang.InkDb
 import org.inklang.InkScript
+import org.inklang.lang.Value
 import java.io.File
 
 /**
@@ -36,12 +37,24 @@ class ScriptContext(
     // Dynamic scripts cannot register events — throw UnsupportedOperationException
     override fun registerEventHandler(
         eventName: String,
-        handlerFunc: org.inklang.lang.Value.Function,
+        handlerFunc: Value.Function,
         eventParamName: String,
         dataParamNames: List<String>
     ) {
         throw UnsupportedOperationException(
             "Dynamic scripts cannot register events. Place event handlers in a plugin in plugins/ink/plugins/"
         )
+    }
+
+    override fun fireEvent(eventName: String, event: Value.EventObject, data: List<Value?>): Boolean {
+        return false
+    }
+
+    override fun onEnable(script: InkScript) {
+        throw UnsupportedOperationException("Dynamic scripts do not support lifecycle")
+    }
+
+    override fun onDisable(script: InkScript) {
+        throw UnsupportedOperationException("Dynamic scripts do not support lifecycle")
     }
 }

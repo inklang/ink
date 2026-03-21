@@ -302,6 +302,26 @@ object Builtins {
         )
     )
 
+    val DequeIteratorClass = ClassDescriptor(
+        name = "DequeIterator",
+        superClass = null,
+        methods = mapOf(
+            "hasNext" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val items = (self.fields["__items"] as Value.InternalList).items
+                val current = (self.fields["current"] as Value.Int).value
+                if (current < items.size) Value.Boolean.TRUE else Value.Boolean.FALSE
+            },
+            "next" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val items = (self.fields["__items"] as Value.InternalList).items
+                val current = (self.fields["current"] as Value.Int).value
+                self.fields["current"] = Value.Int(current + 1)
+                items.getOrElse(current) { Value.Null }
+            }
+        )
+    )
+
     fun newArray(elements: MutableList<Value>): Value.Instance =
         Value.Instance(
             ArrayClass,

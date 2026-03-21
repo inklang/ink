@@ -42,6 +42,8 @@ fn process(@notNull input: string) { ... }
 - **Fields/Properties** — `@validate @notNull name: string`
 - **Parameters** — `fn foo(@notNull arg: int)`
 
+Return values, enum variants, and local variables are **not** annotatable in this initial version.
+
 Multiple annotations can be stacked on a single declaration.
 
 ## Annotation Arguments
@@ -63,18 +65,23 @@ annotation Deprecated {
 }
 
 annotation Inline {
-    level: int  // defaults handled at use site
+    level: int = 1
+}
+
+annotation Deprecated {
+    reason: string
 }
 ```
 
 Annotation fields have types: `string`, `int`, `bool`, `float`, `double`.
+Default values are specified with `= value` syntax. Fields without defaults are required.
 
 ## Built-in Annotations
 
 | Annotation | Fields | Purpose |
 |------------|--------|---------|
 | `@deprecated` | `reason: string` | Warn when deprecated declaration is used |
-| `@inline` | `level: int` (default=1) | Suggest inlining to optimizer |
+| `@inline` | `level: int = 1` | Suggest inlining to optimizer |
 | `@pure` | — | Function has no side effects |
 
 ## Implementation
@@ -131,32 +138,40 @@ Lexer (tokenize) --> Token stream
 Parser (parse) --> AST (with annotation attachments)
     |
     v
-ConstantFolder (existing)
+[NEW] AnnotationChecker (validates annotation args, processes @deprecated, @inline, @pure)
     |
     v
-[NEW] AnnotationChecker (processes @deprecated, @inline, @pure)
+ConstantFolder (existing — runs after annotation processing)
     |
     v
 AstLowerer
     ...
 ```
 
+**Pipeline note:** `AnnotationChecker` runs before `ConstantFolder` so annotation argument validation (e.g., `@inline(level="foo")` type errors) occurs before constant folding. After validation, annotation arguments are stored as literals and do not participate in constant folding.
+
 ### Annotation Processing (Compile-Time)
 
 1. **DeprecatedChecker** — When resolving a call/reference to a `@deprecated` declaration, emit a compiler warning with the reason.
 2. **InlineProcessor** — Attach inline hints to the IR for the optimizer.
-3. **PureValidator** — For `@pure` functions, verify no side-effecting operations (reads globals, calls non-pure, I/O).
-4. **Unknown annotations** — Ignored (extensible design).
+3. **PureValidator** — For `@pure` functions, verify no side-effecting operations:
+   - No reads or writes to globals
+   - No calls to non-`@pure` functions
+   - No I/O operations (print, read, etc.)
+   - A `@pure` function calling another `@pure` function is allowed.
+   - If a `@pure` function calls an unknown/unannotated function, emit an error.
+4. **Unknown annotations** — Ignored by default. To enable warnings for unknown annotations, use the `--warn-unknown-annotations` compiler flag.
 
 ### Error Handling
 
 | Error | Behavior |
 |-------|----------|
-| Unknown annotation | Ignored (optional warning via flag) |
+| Unknown annotation | Ignored by default; warning if `--warn-unknown-annotations` flag is set |
 | `@inline` on non-function | Compiler error |
 | Missing required annotation field | Compiler error |
 | Unknown annotation field | Compiler error |
 | `@deprecated` usage | Compiler warning with reason |
+| `@pure` calls unknown-purity function | Compiler error |
 
 ## Testing
 

@@ -552,24 +552,26 @@ class AstLowerer {
         is Expr.ElvisExpr -> {
             // left ?? right desugars to:
             // temp = left
-            // if (temp != null) goto end_label
+            // if temp != null goto use_left  (skip evaluating right)
             // temp = right
-            // end_label:
+            // use_left:
             // result = temp
+            val useLeftLabel = freshLabel()
             val endLabel = freshLabel()
             val tempReg = freshReg()
             lowerExpr(expr.left, tempReg)
-            // Check if not null
+            // Check if NOT null: compare tempReg to null constant
             val nullConstIdx = addConstant(Value.Null)
             val nullTempReg = freshReg()
             emit(LoadImm(nullTempReg, nullConstIdx))
             val cmpReg = freshReg()
-            emit(BinaryOp(cmpReg, TokenType.BANG_EQ, tempReg, nullTempReg))
-            emit(JumpIfFalse(cmpReg, endLabel)) // if null, evaluate right
-            // Not null: jump to end, keeping tempReg value
-            emit(Jump(endLabel))
-            // Null: evaluate right into tempReg
+            emit(BinaryOp(cmpReg, TokenType.EQ_EQ, tempReg, nullTempReg)) // cmpReg = (tempReg == null)
+            emit(JumpIfFalse(cmpReg, useLeftLabel)) // if NOT null (cmpReg=false), goto useLeft
+            // Null case: evaluate right into tempReg
             lowerExpr(expr.right, tempReg)
+            emit(Jump(endLabel))
+            emit(Label(useLeftLabel))
+            // Not null: keep tempReg (left value), fall through to Move
             emit(Label(endLabel))
             emit(Move(dst, tempReg))
             dst

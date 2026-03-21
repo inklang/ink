@@ -72,6 +72,7 @@ enum class TokenType {
     COLON,
     SEMICOLON,
     QUESTION,             // ? (ternary operator)
+    QUESTION_DOT,         // ?. (safe call operator)
     QUESTION_QUESTION,    // ?? (elvis operator)
     INTERPOLATION_START,  // ${
     INTERPOLATION_END,    // } (closing interpolation)

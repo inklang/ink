@@ -119,6 +119,7 @@ private class Lexer(val source: String) {
                 '<' -> if (match('=')) addToken(TokenType.LTE) else addToken(TokenType.LT)
                 '>' -> if (match('=')) addToken(TokenType.GTE) else addToken(TokenType.GT)
                 '?' -> when {
+    match('.') -> addToken(TokenType.QUESTION_DOT)
     match('?') -> addToken(TokenType.QUESTION_QUESTION)
     else -> addToken(TokenType.QUESTION)
 }

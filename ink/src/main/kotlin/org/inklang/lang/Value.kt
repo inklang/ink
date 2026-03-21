@@ -530,6 +530,92 @@ object Builtins {
             mutableMapOf("__tuple" to Value.InternalTuple(items))
         )
 
+    val DequeClass = ClassDescriptor(
+        name = "Deque",
+        superClass = null,
+        methods = mapOf(
+            "init" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                self.fields["__deque"] = Value.InternalDeque()
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                for (i in 1 until args.size) {
+                    deque.addLast(args[i])
+                }
+                Value.Null
+            },
+            "push_left" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                deque.addFirst(args[1])
+                Value.Null
+            },
+            "push_right" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                deque.addLast(args[1])
+                Value.Null
+            },
+            "pop_left" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                if (deque.isEmpty()) Value.Null else deque.removeFirst()
+            },
+            "pop_right" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                if (deque.isEmpty()) Value.Null else deque.removeLast()
+            },
+            "peek_left" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                if (deque.isEmpty()) Value.Null else deque.first()
+            },
+            "peek_right" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                if (deque.isEmpty()) Value.Null else deque.last()
+            },
+            "size" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                Value.Int(deque.size)
+            },
+            "is_empty" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                if (deque.isEmpty()) Value.Boolean.TRUE else Value.Boolean.FALSE
+            },
+            "has" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                if (deque.contains(args[1])) Value.Boolean.TRUE else Value.Boolean.FALSE
+            },
+            "clear" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val deque = (self.fields["__deque"] as Value.InternalDeque).items
+                deque.clear()
+                Value.Null
+            },
+            "iter" to Value.NativeFunction { args ->
+                val self = args[0] as Value.Instance
+                val internalDeque = self.fields["__deque"] as Value.InternalDeque
+                Value.Instance(
+                    DequeIteratorClass,
+                    mutableMapOf(
+                        "__items" to Value.InternalList(internalDeque.items.toMutableList()),
+                        "current" to Value.Int(0)
+                    )
+                )
+            }
+        )
+    )
+
+    fun newDeque(items: ArrayDeque<Value> = ArrayDeque()): Value.Instance =
+        Value.Instance(
+            DequeClass,
+            mutableMapOf("__deque" to Value.InternalDeque(items))
+        )
+
     private fun toDouble(v: Value): Double = when (v) {
         is Value.Int -> v.value.toDouble()
         is Value.Float -> v.value.toDouble()

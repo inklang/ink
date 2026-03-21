@@ -292,4 +292,21 @@ class InkCompilerTest {
         script.execute(context)
         assertEquals(listOf("Alice"), context.prints)
     }
+
+    @Test
+    fun `function with multiple defaults fills in order`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            fn add(a: Int, b: Int = 10, c: Int = 20) -> Int {
+                a + b + c
+            }
+            print(add(1))
+            print(add(1, 2))
+            print(add(1, 2, 3))
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("31", "23", "6"), context.prints)
+    }
 }

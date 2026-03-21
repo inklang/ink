@@ -4,6 +4,7 @@ import org.inklang.lang.Value.*
 import org.inklang.lang.getStringMethod
 
 fun valueToString(v: Value): String = when (v) {
+    is Value.Boolean -> v.value.toString()
     is Value.Instance -> {
         val items = v.fields["__items"]
         val entries = v.fields["__entries"]
@@ -30,6 +31,7 @@ class VM {
         "Map" to Value.Class(Builtins.MapClass),
         "Set" to Value.Class(Builtins.SetClass),
         "Tuple" to Value.Class(Builtins.TupleClass),
+        "Deque" to Value.Class(Builtins.DequeClass),
         "EnumValue" to Value.Class(Builtins.EnumValueClass),
         "EnumNamespace" to Value.Class(Builtins.EnumNamespaceClass),
         "print" to Value.NativeFunction { args ->

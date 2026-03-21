@@ -20,6 +20,11 @@ class BukkitDb(private val dbPath: String) : InkDb {
         conn.createStatement().execute("PRAGMA foreign_keys = ON")
     }
 
+    /** Closes the database connection. Call this when done with the database. */
+    fun close() {
+        conn.close()
+    }
+
     override fun from(table: String): InkTableRef {
         val info = tableInfoCache[table]
             ?: error("Table '$table' not declared. Add 'table $table { ... }' at the top of your script.")

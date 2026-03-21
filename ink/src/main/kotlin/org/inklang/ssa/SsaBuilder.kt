@@ -238,6 +238,7 @@ class SsaBuilder(
         is IrInstr.Throw -> null
         is IrInstr.RegisterEventHandler -> null
         is IrInstr.InvokeEventHandler -> null
+        is IrInstr.GetUpvalue -> SsaInstr.Move(SsaValue(instr.dst, 0), SsaValue(0, 0))  // dst defined, no src register
     }
 
     /**
@@ -258,6 +259,7 @@ class SsaBuilder(
         is IrInstr.IsType -> instr.dst
         is IrInstr.HasCheck -> instr.dst
         is IrInstr.LoadClass -> instr.dst
+        is IrInstr.GetUpvalue -> instr.dst
         else -> null
     }
 

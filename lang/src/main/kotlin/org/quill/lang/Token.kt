@@ -33,6 +33,8 @@ enum class TokenType {
     KW_TABLE,
     KW_KEY,
     KW_CONFIG,
+    KW_ON,
+    KW_EVENT,
     IDENTIFIER,
     PLUS,
     MINUS,

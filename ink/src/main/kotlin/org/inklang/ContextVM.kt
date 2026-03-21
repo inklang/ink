@@ -505,6 +505,256 @@ class ContextVM(
         }
     }
 
+    /**
+     * Execute a handler function with pre-loaded arguments.
+     * Used for event handler invocation.
+     */
+    fun executeHandler(func: Value.Function, args: ArrayDeque<Value>) {
+        val frame = CallFrame(func.chunk)
+        frame.returnDst = 0
+        args.forEachIndexed { i, v -> frame.regs[i] = v }
+
+        while (frame.ip < frame.chunk.code.size) {
+            if (maxInstructions > 0) {
+                instructionCount++
+                if (instructionCount > maxInstructions) {
+                    throw ScriptTimeoutException(instructionCount, maxInstructions)
+                }
+            }
+
+            val word = frame.chunk.code[frame.ip++]
+            val opcode = OpCode.entries.find { it.code == (word and 0xFF).toByte() }
+                ?: throw ScriptException("Unknown opcode: ${word and 0xFF}")
+            val dst = (word shr 8) and 0x0F
+            val src1 = (word shr 12) and 0x0F
+            val src2 = (word shr 16) and 0x0F
+            val imm = (word shr 20) and 0xFFF
+
+            try {
+                when (opcode) {
+                    OpCode.LOAD_IMM -> frame.regs[dst] = frame.chunk.constants[imm]
+                    OpCode.LOAD_GLOBAL -> frame.regs[dst] = globals[frame.chunk.strings[imm]]
+                        ?: throw ScriptException("Undefined global: ${frame.chunk.strings[imm]}")
+                    OpCode.STORE_GLOBAL -> globals[frame.chunk.strings[imm]] = frame.regs[src1]!!
+                    OpCode.MOVE -> frame.regs[dst] = frame.regs[src1]
+
+                    OpCode.ADD -> {
+                        val a = frame.regs[src1]!!
+                        val b = frame.regs[src2]!!
+                        if (a is Value.String || b is Value.String) {
+                            frame.regs[dst] = Value.String(a.toString() + b.toString())
+                        } else {
+                            frame.regs[dst] = binop(a, b) { x, y -> x + y }
+                        }
+                    }
+                    OpCode.SUB -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a - b }
+                    OpCode.MUL -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a * b }
+                    OpCode.DIV -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a / b }
+                    OpCode.MOD -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a % b }
+                    OpCode.POW -> frame.regs[dst] = binop(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> Math.pow(a, b) }
+                    OpCode.NEG -> frame.regs[dst] = negate(frame.regs[src1]!!)
+
+                    OpCode.NOT -> frame.regs[dst] = if (isFalsy(frame.regs[src1]!!)) Value.Boolean.TRUE else Value.Boolean.FALSE
+                    OpCode.EQ -> frame.regs[dst] = if (frame.regs[src1] == frame.regs[src2]) Value.Boolean.TRUE else Value.Boolean.FALSE
+                    OpCode.NEQ -> frame.regs[dst] = if (frame.regs[src1] != frame.regs[src2]) Value.Boolean.TRUE else Value.Boolean.FALSE
+                    OpCode.LT -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a < b }
+                    OpCode.LTE -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a <= b }
+                    OpCode.GT -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a > b }
+                    OpCode.GTE -> frame.regs[dst] = cmp(frame.regs[src1]!!, frame.regs[src2]!!) { a, b -> a >= b }
+
+                    OpCode.JUMP -> frame.ip = imm
+                    OpCode.JUMP_IF_FALSE -> if (isFalsy(frame.regs[src1]!!)) frame.ip = imm
+
+                    OpCode.LOAD_FUNC -> {
+                        val funcChunk = frame.chunk.functions[imm]
+                        val defaults = if (imm < frame.chunk.functionDefaults.size) {
+                            frame.chunk.functionDefaults[imm]
+                        } else {
+                            null
+                        }
+                        val requiredArity: kotlin.Int = defaults?.defaultChunks?.count { it == null } ?: 0
+                        frame.regs[dst] = Value.Function(funcChunk, requiredArity, defaults)
+                    }
+                    OpCode.CALL -> {
+                        val passedArgCount = imm
+                        val callArgs = (0 until passedArgCount).map { i ->
+                            frame.argBuffer.removeFirstOrNull() ?: throw ScriptException("Missing argument $i in arg buffer")
+                        }
+                        when (val funcVal = frame.regs[src1]) {
+                            is Value.Function -> {
+                                val totalParams = funcVal.defaults?.defaultChunks?.size ?: passedArgCount
+                                val finalArgs = fillDefaultArgs(callArgs, funcVal, totalParams, frame, ArrayDeque())
+                                val newFrame = CallFrame(funcVal.chunk)
+                                newFrame.returnDst = dst
+                                finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
+                                // For handler execution, we use a single frame - but CALL creates nested frames
+                                // This simplified handler doesn't support nested calls from handlers
+                                frame.regs[dst] = Value.Null
+                            }
+                            is Value.NativeFunction -> {
+                                frame.regs[dst] = funcVal.fn(callArgs)
+                            }
+                            else -> throw ScriptException("Cannot call non-function: $funcVal")
+                        }
+                    }
+                    OpCode.PUSH_ARG -> {
+                        frame.argBuffer.addLast(frame.regs[src1] ?: throw ScriptException("Null value in PUSH_ARG at reg $src1"))
+                    }
+                    OpCode.RETURN -> {
+                        return
+                    }
+
+                    OpCode.POP -> { /* no-op in register VM */ }
+                    OpCode.BREAK -> throw ScriptException("BREAK outside loop")
+                    OpCode.NEXT -> throw ScriptException("NEXT outside loop")
+                    OpCode.NEW_ARRAY -> {
+                        val count = imm
+                        val elements = (0 until count).map { i ->
+                            frame.argBuffer.removeFirstOrNull() ?: throw ScriptException("Missing array element $i")
+                        }
+                        frame.regs[dst] = Builtins.newArray(elements.toMutableList())
+                    }
+                    OpCode.GET_FIELD -> {
+                        val obj = frame.regs[src1] ?: throw ScriptException("Cannot get field on null")
+                        val fieldName = frame.chunk.strings[imm]
+                        frame.regs[dst] = when (obj) {
+                            is Value.Instance -> {
+                                obj.fields[fieldName]?.let { it }
+                                    ?: lookupMethod(obj, fieldName)
+                                        ?.let { Value.BoundMethod(obj, it) }
+                                    ?: throw ScriptException("Instance has no field '$fieldName'")
+                            }
+                            else -> throw ScriptException("Cannot get field on ${obj::class.simpleName}")
+                        }
+                    }
+                    OpCode.SET_FIELD -> {
+                        val obj = frame.regs[src1] as? Value.Instance
+                            ?: throw ScriptException("Cannot set field on non-instance")
+                        if (obj.clazz.readOnly) {
+                            throw ScriptException("Cannot modify read-only ${obj.clazz.name} field")
+                        }
+                        val fieldName = frame.chunk.strings[imm]
+                        obj.fields[fieldName] = frame.regs[src2] ?: Value.Null
+                    }
+                    OpCode.NEW_INSTANCE -> {
+                        val classVal = frame.regs[src1] as? Value.Class
+                            ?: throw ScriptException("Cannot create instance of non-class: ${frame.regs[src1]}")
+                        val instanceArgs = (0 until imm).map { i ->
+                            frame.argBuffer.removeFirstOrNull() ?: throw ScriptException("Missing argument $i")
+                        }
+                        val instance = Value.Instance(classVal.descriptor)
+                        frame.regs[dst] = instance
+                    }
+                    OpCode.IS_TYPE -> {
+                        val value = frame.regs[src1]
+                        val typeName = frame.chunk.strings[imm]
+                        val result = when (value) {
+                            is Value.Int -> typeName == "int"
+                            is Value.Float -> typeName == "float"
+                            is Value.Double -> typeName == "double"
+                            is Value.String -> typeName == "string"
+                            is Value.Boolean -> typeName == "bool"
+                            is Value.Instance -> isInTypeChain(value.clazz, typeName)
+                            is Value.Class -> value.descriptor.name == typeName
+                            else -> false
+                        }
+                        frame.regs[dst] = if (result) Value.Boolean.TRUE else Value.Boolean.FALSE
+                    }
+                    OpCode.HAS -> {
+                        val obj = frame.regs[src1] ?: throw ScriptException("Cannot has on null")
+                        val fieldName = frame.chunk.strings[imm]
+                        val result = when (obj) {
+                            is Value.Instance -> {
+                                if (obj.clazz == Builtins.MapClass) {
+                                    val entriesVal = obj.fields["__entries"]
+                                    if (entriesVal is Value.InternalMap) {
+                                        Value.Boolean(entriesVal.entries.containsKey(Value.String(fieldName)))
+                                    } else {
+                                        Value.Boolean(false)
+                                    }
+                                } else if (obj.clazz == Builtins.ArrayClass) {
+                                    Value.Boolean(false)
+                                } else {
+                                    Value.Boolean(obj.fields.containsKey(fieldName))
+                                }
+                            }
+                            else -> Value.Boolean(false)
+                        }
+                        frame.regs[dst] = result
+                    }
+                    OpCode.BUILD_CLASS -> {
+                        val classInfo = frame.chunk.classes[imm]
+                        val superClassDescriptor = classInfo.superClass?.let { superName ->
+                            (globals[superName] as? Value.Class)?.descriptor
+                        }
+                        val methods = classInfo.methods.mapValues { (_, funcIdx) ->
+                            Value.Function(frame.chunk.functions[funcIdx])
+                        }
+                        val descriptor = ClassDescriptor(classInfo.name, superClassDescriptor, methods)
+                        frame.regs[dst] = Value.Class(descriptor)
+                    }
+                    OpCode.RANGE -> {
+                        val start = (frame.regs[src1] as? Value.Int)?.value
+                            ?: throw ScriptException("Range start must be int: ${frame.regs[src1]}")
+                        val end = (frame.regs[src2] as? Value.Int)?.value
+                            ?: throw ScriptException("Range end must be int: ${frame.regs[src2]}")
+                        frame.regs[dst] = Builtins.newRange(start, end)
+                    }
+                    OpCode.GET_INDEX -> {
+                        val obj = frame.regs[src1]!!
+                        when (obj) {
+                            is Value.Instance -> {
+                                val getMethod = lookupMethod(obj, "get")
+                                    ?: throw ScriptException("Instance has no 'get' method for indexing")
+                                val index = frame.regs[src2]!!
+                                when (getMethod) {
+                                    is Value.NativeFunction -> frame.regs[dst] = getMethod.fn(listOf(obj, index))
+                                    else -> throw ScriptException("get method is not a native function")
+                                }
+                            }
+                            else -> throw ScriptException("Cannot index: ${obj::class.simpleName}")
+                        }
+                    }
+                    OpCode.SET_INDEX -> {
+                        val obj = frame.regs[src1]!!
+                        when (obj) {
+                            is Value.Instance -> {
+                                val setMethod = lookupMethod(obj, "set")
+                                    ?: throw ScriptException("Instance has no 'set' method for indexing")
+                                val index = frame.regs[src2]!!
+                                val value = frame.regs[imm] ?: Value.Null
+                                when (setMethod) {
+                                    is Value.NativeFunction -> setMethod.fn(listOf(obj, index, value))
+                                    else -> throw ScriptException("set method is not a native function")
+                                }
+                            }
+                            else -> throw ScriptException("Cannot index: ${obj::class.simpleName}")
+                        }
+                    }
+                    OpCode.SPILL -> frame.spills[imm] = frame.regs[src1]
+                    OpCode.UNSPILL -> frame.regs[dst] = frame.spills[imm]!!
+                    OpCode.THROW -> {
+                        val throwable = frame.regs[src1] ?: throw ScriptException("Cannot throw null")
+                        val message = when (throwable) {
+                            is Value.String -> throwable.value
+                            else -> throwable.toString()
+                        }
+                        throw ScriptException("Uncaught exception: $message")
+                    }
+                    OpCode.REGISTER_EVENT -> {
+                        // Event handlers are registered at compile time - no-op at runtime
+                    }
+                }
+            } catch (e: ScriptException) {
+                throw e
+            } catch (e: ScriptTimeoutException) {
+                throw e
+            } catch (e: Exception) {
+                throw ScriptException("Runtime error: ${e.message}", e)
+            }
+        }
+    }
+
     private fun isFalsy(v: Value): Boolean = when (v) {
         is Value.Boolean -> !v.value
         is Value.Null -> true

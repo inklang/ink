@@ -186,9 +186,7 @@ class CombinedGrammarBuilder {
 
         for ((names, pkg) in nameGroups) {
             for (name in names) {
-                // Get package name (use a placeholder if not available)
-                val packageName = pkg.toString().removePrefix("PackageGrammar(").takeWhile { it != ')' }
-                nameToPackages.getOrPut(name) { mutableListOf() }.add(packageName)
+                nameToPackages.getOrPut(name) { mutableListOf() }.add(pkg.name)
             }
         }
 

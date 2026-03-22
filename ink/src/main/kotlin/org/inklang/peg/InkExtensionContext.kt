@@ -42,6 +42,7 @@ data class DeclarationExtension(
  * Contains statements, declarations, and custom rules.
  */
 data class PackageGrammar(
+    val name: String,
     val statements: Map<String, StatementExtension>,
     val declarations: Map<String, DeclarationExtension>,
     val rules: Map<String, Parser<*>>
@@ -88,6 +89,7 @@ class DeclarationExtensionBuilder {
  * Packages use this to register custom statements, declarations, and rules.
  */
 class InkExtensionContext {
+    var name: String = "<unknown>"
     private val statements = mutableMapOf<String, StatementExtension>()
     private val declarations = mutableMapOf<String, DeclarationExtension>()
     private val rules = mutableMapOf<String, Parser<*>>()
@@ -129,6 +131,7 @@ class InkExtensionContext {
      */
     fun build(): PackageGrammar {
         return PackageGrammar(
+            name = name,
             statements = statements.toMap(),
             declarations = declarations.toMap(),
             rules = rules.toMap()

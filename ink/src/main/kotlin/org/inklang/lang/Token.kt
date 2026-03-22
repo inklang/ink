@@ -38,6 +38,8 @@ enum class TokenType {
     KW_FINALLY,
     KW_THROW,
     KW_ON,
+    KW_ENABLE,    // enable keyword
+    KW_DISABLE,   // disable keyword
     KW_EVENT,
     IDENTIFIER,
     PLUS,

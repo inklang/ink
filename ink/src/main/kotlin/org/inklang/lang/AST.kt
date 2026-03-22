@@ -175,4 +175,8 @@ sealed class Stmt {
         val body: Stmt.BlockStmt
     ) : Stmt()
 
+    // Lifecycle blocks for plugins
+    data class EnableStmt(val block: BlockStmt) : Stmt()
+    data class DisableStmt(val block: BlockStmt) : Stmt()
+
 }

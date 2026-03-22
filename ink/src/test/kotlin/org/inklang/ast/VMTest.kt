@@ -1,6 +1,8 @@
 package org.inklang.ast
 
+import org.inklang.InkCompiler
 import org.inklang.lang.*
+import java.io.File
 import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -290,6 +292,97 @@ class VMTest {
         val stmts = Parser(tokens).parse()
         assertEquals(1, stmts.size)
         assertTrue(stmts[0] is Stmt.ConfigStmt)
+    }
+
+    @Test
+    fun testConfigLoading() {
+        // Create a temp dir with a settings.yml file
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "ink-test-${System.nanoTime()}").also { it.mkdirs() }
+        val settingsFile = File(tempDir, "settings.yml")
+        settingsFile.writeText("""
+            name: "loaded-from-yaml"
+            port: 9000
+        """.trimIndent())
+
+        try {
+            // Compile a script that declares the config
+            val compiler = InkCompiler()
+            val script = """
+                config Settings {
+                    name: string = "default"
+                    port: int = 8080
+                }
+                print(Settings.name)
+                print(Settings.port)
+            """.trimIndent()
+            val compiled = compiler.compile(script, "test-config")
+
+            // preloadConfigs should load from YAML
+            val preloaded = compiled.preloadConfigs(tempDir.absolutePath)
+            assertEquals(1, preloaded.size)
+            assertTrue(preloaded.containsKey("Settings"))
+
+            val settings = preloaded["Settings"]!!
+            assertEquals("loaded-from-yaml", (settings.fields["name"] as Value.String).value)
+            assertEquals(9000, (settings.fields["port"] as Value.Int).value)
+        } finally {
+            settingsFile.delete()
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testConfigDefaults() {
+        // Empty temp dir — no YAML file
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "ink-test-${System.nanoTime()}").also { it.mkdirs() }
+
+        try {
+            val compiler = InkCompiler()
+            val script = """
+                config Settings {
+                    name: string = "default-name"
+                    port: int = 1234
+                }
+            """.trimIndent()
+            val compiled = compiler.compile(script, "test-config-defaults")
+
+            // preloadConfigs should use defaults since no YAML exists
+            val preloaded = compiled.preloadConfigs(tempDir.absolutePath)
+            val settings = preloaded["Settings"]!!
+            assertEquals("default-name", (settings.fields["name"] as Value.String).value)
+            assertEquals(1234, (settings.fields["port"] as Value.Int).value)
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testConfigMissingRequiredField() {
+        // No YAML file, required field with no default
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "ink-test-${System.nanoTime()}").also { it.mkdirs() }
+
+        try {
+            val compiler = InkCompiler()
+            // "required" field has no default — YAML has no value for it
+            val script = """
+                config Settings {
+                    required: string
+                }
+            """.trimIndent()
+            val compiled = compiler.compile(script, "test-config-required")
+
+            // Should throw because 'required' has no value in YAML and no default
+            var thrown = false
+            try {
+                compiled.preloadConfigs(tempDir.absolutePath)
+            } catch (e: RuntimeException) {
+                thrown = true
+                assertTrue(e.message!!.contains("required"))
+            }
+            assertTrue(thrown, "Expected RuntimeException for missing required field")
+        } finally {
+            tempDir.deleteRecursively()
+        }
     }
 
     @Test

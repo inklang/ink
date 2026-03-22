@@ -172,6 +172,28 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.OnHandlerStmt(eventName, null, eventParam, dataParams, body)
     }
 
+    private fun parseEnable(): Stmt {
+        consume(TokenType.KW_ENABLE, "Expected 'enable'")
+        consume(TokenType.L_BRACE, "Expected '{'")
+        val statements = mutableListOf<Stmt>()
+        while (!check(TokenType.R_BRACE) && !isAtEnd()) {
+            statements.add(parseStmt())
+        }
+        consume(TokenType.R_BRACE, "Expected '}'")
+        return Stmt.EnableStmt(Stmt.BlockStmt(statements))
+    }
+
+    private fun parseDisable(): Stmt {
+        consume(TokenType.KW_DISABLE, "Expected 'disable'")
+        consume(TokenType.L_BRACE, "Expected '{'")
+        val statements = mutableListOf<Stmt>()
+        while (!check(TokenType.R_BRACE) && !isAtEnd()) {
+            statements.add(parseStmt())
+        }
+        consume(TokenType.R_BRACE, "Expected '}'")
+        return Stmt.DisableStmt(Stmt.BlockStmt(statements))
+    }
+
     private fun parseStmt(): Stmt {
         // Check for annotations first - they may appear before any statement keyword
         val leadingAnnotations = if (check(TokenType.AT)) parseAnnotations() else emptyList()
@@ -199,6 +221,8 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KW_ANNOTATION) -> parseAnnotationDecl()
             check(TokenType.KW_EVENT) -> parseEventDecl()
             check(TokenType.KW_ON) -> parseOnHandler()
+            check(TokenType.KW_ENABLE) -> parseEnable()
+            check(TokenType.KW_DISABLE) -> parseDisable()
             else -> {
                 val expr = parseExpression(0)
                 if (check(TokenType.SEMICOLON)) advance()

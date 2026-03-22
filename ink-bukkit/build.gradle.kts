@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.2.21"
     id("io.github.goooler.shadow") version "8.1.8"
+    id("xyz.jpenilla.run-paper") version "3.0.2"
 }
 
 group = "org.inklang"
@@ -36,6 +37,10 @@ tasks {
 
     build {
         dependsOn(shadowJar)
+    }
+
+    runServer {
+        minecraftVersion("1.21.8")
     }
 }
 

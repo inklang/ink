@@ -12,11 +12,13 @@ Ink is a compiled, statically-typed scripting language targeting a register-base
 
 ### Built-in Types
 - `int`, `float`, `double`, `string`, `bool`, `null`
-- `list`, `set`, `tuple`, `map` collection literals
+- `list`, `set`, `tuple` collection literals
+- `map` ✅ implemented with get/set/size/keys/values/delete
 - `class` with single inheritance
-- `enum`
-- `table` (stub - parsed but not fully implemented)
-- `config` (stub - parsed but not fully implemented)
+- `enum` ✅ implemented with EnumNamespace + EnumValue runtime
+- `table` (partial - TableRuntime for SQLite integration)
+- `config` ✅ implemented via ConfigRuntime, pre-loaded at script execution
+- `Deque` (plan exists, not yet implemented)
 
 ### Operators
 
@@ -209,3 +211,19 @@ end:
 2. **SSA not integrated as primary IR** - Used for round-trip optimization only
 3. **16 register limit** - Spilling handles most overflow
 4. **Import/Config/Table stubs** - Parsed but no runtime implementation
+
+## Feature Implementation Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Null safety (`?.`, `??`)** | ✅ Implemented | SafeCallExpr, ElvisExpr fully lowered to IR |
+| **`has` operator** | ✅ Implemented | HasExpr parsed and lowered to `HAS` IR instruction |
+| **Ternary operator** | ✅ Implemented | TernaryExpr parsed and fully lowered to IR jumps |
+| **Enums** | ✅ Implemented | EnumStmt → EnumNamespace + EnumValue runtime classes |
+| **Maps** | ✅ Implemented | MapClass with InternalMap, get/set/size/keys/values/delete |
+| **Lambdas/Closures** | ⚠️ Partial | LambdaExpr lowered, but NO closure capture (no upvalues) |
+| **Imports** | ⚠️ Partial | stdlib imports work (math, random, io, json), others are markers |
+| **Config** | ✅ Implemented | ConfigRuntime wired to ConfigStmt via preloadConfigs() |
+| **Generics** | 📋 Planned | TypeParam in AST, TypeResolver not built |
+| **Deque** | 📋 Planned | Plan ready, InternalDeque/DequeClass not built |
+| **Table (DB)** | ⚠️ Partial | TableRuntime exists for SQLite integration |

@@ -1,0 +1,13 @@
+[package]
+name = "mobs"
+version = "1.0.0"
+ink_version = ">=0.3.0"
+description = "First-class mob definitions for Ink"
+
+[dependencies]
+ink-core = "0.3.0"
+ink-events = ">=0.2.0"
+
+[visibility]
+pub_script = ["mobs::spawn", "mobs::despawn"]
+pub = ["mobs::register_mob"]

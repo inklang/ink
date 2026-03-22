@@ -4,17 +4,19 @@ import org.inklang.CompilationException
 import org.inklang.lang.*
 import org.inklang.lang.IrInstr.*
 
-class AstLowerer {
-    private val instrs = mutableListOf<IrInstr>()
-    private var labelCounter = 0
-    private val constants = mutableListOf<Value>()
-    private val functions = mutableListOf<List<IrInstr>>()
-    private var regCounter = 0
-    private val locals = mutableMapOf<String, Int>()
-    private val constLocals = mutableSetOf<String>()
-    private var breakLabel: IrLabel? = null
-    private var nextLabel: IrLabel? = null
-    private var lambdaCounter = 0
+open class AstLowerer {
+    protected val instrs = mutableListOf<IrInstr>()
+    protected var labelCounter = 0
+    protected val constants = mutableListOf<Value>()
+    protected val functions = mutableListOf<List<IrInstr>>()
+    protected var regCounter = 0
+    protected val locals = mutableMapOf<String, Int>()
+    protected val constLocals = mutableSetOf<String>()
+    protected var breakLabel: IrLabel? = null
+    protected var nextLabel: IrLabel? = null
+    protected var lambdaCounter = 0
+    // Field names for class methods - used to resolve bare identifiers to self.fieldName
+    protected open var fieldNames: Set<String> = emptySet()
 
     private fun freshReg(): Int = regCounter++
     private fun freshLabel(): IrLabel = IrLabel(labelCounter++)
@@ -101,11 +103,9 @@ class AstLowerer {
             }
         }
         is Stmt.ConfigStmt -> {
-            val dst = freshReg()
-            locals[stmt.name.lexeme] = dst
-            val configMarkerIdx = addConstant(Value.String("__config__${stmt.name.lexeme}"))
-            emit(IrInstr.LoadImm(dst, configMarkerIdx))
-            emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
+            // Config values are loaded at runtime via InkScript.preloadConfigs()
+            // No IR emitted here — globals["${stmt.name.lexeme}"] is pre-populated
+            locals[stmt.name.lexeme] = freshReg()
         }
         is Stmt.TableStmt -> {
             val tableName = stmt.name.lexeme
@@ -222,6 +222,8 @@ class AstLowerer {
             )
             emit(instr)
         }
+        is Stmt.EnableStmt -> lowerBlock(stmt.block)
+        is Stmt.DisableStmt -> lowerBlock(stmt.block)
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {
@@ -382,36 +384,73 @@ class AstLowerer {
 
         // Lower each method with self as implicit first parameter
         val methods = mutableMapOf<String, MethodInfo>()
+
+        // Collect field declarations for implicit init method and field resolution
+        val fieldDeclarations = mutableListOf<Stmt.VarStmt>()
+        val fieldNames = mutableSetOf<String>()
+
         for (member in stmt.body.stmts) {
-            if (member is Stmt.FuncStmt) {
-                val methodLowerer = AstLowerer()
-                // self is at index 0
-                methodLowerer.locals["self"] = 0
-                // Regular params start at index 1
-                for ((i, param) in member.params.withIndex()) {
-                    methodLowerer.locals[param.name.lexeme] = i + 1
-                }
-                methodLowerer.regCounter = member.params.size + 1  // +1 for self
-                val result = methodLowerer.lower(member.body.stmts)
-
-                // Lower default value expressions for method params
-                val defaultValues = member.params.map { param ->
-                    param.defaultValue?.let { defaultValue ->
-                        val defaultLowerer = AstLowerer()
-                        val defaultDst = defaultLowerer.freshReg()
-                        defaultLowerer.lowerExpr(defaultValue, defaultDst)
-                        val defaultResult = defaultLowerer.lower(emptyList())
-                        DefaultValueInfo(defaultResult.instrs, defaultResult.constants)
+            when (member) {
+                is Stmt.FuncStmt -> {
+                    val methodLowerer = AstLowerer()
+                    methodLowerer.fieldNames = fieldNames
+                    // self is at index 0
+                    methodLowerer.locals["self"] = 0
+                    // Regular params start at index 1
+                    for ((i, param) in member.params.withIndex()) {
+                        methodLowerer.locals[param.name.lexeme] = i + 1
                     }
-                }
+                    methodLowerer.regCounter = member.params.size + 1  // +1 for self
+                    val result = methodLowerer.lower(member.body.stmts)
 
-                methods[member.name.lexeme] = MethodInfo(
-                    arity = member.params.size + 1,  // includes self
-                    instrs = result.instrs,
-                    constants = result.constants,
-                    defaultValues = defaultValues
-                )
+                    // Lower default value expressions for method params
+                    val defaultValues = member.params.map { param ->
+                        param.defaultValue?.let { defaultValue ->
+                            val defaultLowerer = AstLowerer()
+                            val defaultDst = defaultLowerer.freshReg()
+                            defaultLowerer.lowerExpr(defaultValue, defaultDst)
+                            val defaultResult = defaultLowerer.lower(emptyList())
+                            DefaultValueInfo(defaultResult.instrs, defaultResult.constants)
+                        }
+                    }
+
+                    methods[member.name.lexeme] = MethodInfo(
+                        arity = member.params.size + 1,  // includes self
+                        instrs = result.instrs,
+                        constants = result.constants,
+                        defaultValues = defaultValues
+                    )
+                }
+                is Stmt.VarStmt -> {
+                    fieldDeclarations.add(member)
+                    fieldNames.add(member.name.lexeme)
+                }
+                else -> {}
             }
+        }
+
+        // Create implicit init method that initializes fields
+        if (fieldDeclarations.isNotEmpty()) {
+            val initLowerer = AstLowerer()
+            initLowerer.fieldNames = fieldNames
+            // self is at index 0
+            initLowerer.locals["self"] = 0
+            initLowerer.regCounter = 1
+
+            for (field in fieldDeclarations) {
+                val fieldName = field.name.lexeme
+                val valueDst = initLowerer.freshReg()
+                initLowerer.lowerExpr(field.value ?: Expr.LiteralExpr(Value.Null), valueDst)
+                initLowerer.emit(IrInstr.SetField(0, fieldName, valueDst))
+            }
+
+            val initResult = initLowerer.lower(emptyList())
+            methods["init"] = MethodInfo(
+                arity = 1,  // just self
+                instrs = initResult.instrs,
+                constants = initResult.constants,
+                defaultValues = emptyList()
+            )
         }
 
         val dst = freshReg()
@@ -429,7 +468,15 @@ class AstLowerer {
         is Expr.VariableExpr -> {
             val reg = locals[expr.name.lexeme]
             if (reg != null) {
-                reg  // already in a register
+                // Local variable: move to dst as per lowerExpr contract
+                if (reg != dst) {
+                    emit(IrInstr.Move(dst, reg))
+                }
+                dst
+            } else if (expr.name.lexeme in fieldNames) {
+                // Field access: self.fieldName
+                emit(IrInstr.GetField(dst, 0, expr.name.lexeme))
+                dst
             } else {
                 emit(LoadGlobal(dst, expr.name.lexeme))
                 dst
@@ -518,6 +565,14 @@ class AstLowerer {
                             val valueReg = lowerExpr(expr.value, freshReg())
                             emit(BinaryOp(reg, binaryOp, reg, valueReg))
                             reg
+                        } else if (expr.target.name.lexeme in fieldNames) {
+                            // Field compound assignment: self.field op= value
+                            val currentReg = freshReg()
+                            emit(IrInstr.GetField(currentReg, 0, expr.target.name.lexeme))
+                            val valueReg = lowerExpr(expr.value, freshReg())
+                            emit(BinaryOp(currentReg, binaryOp, currentReg, valueReg))
+                            emit(IrInstr.SetField(0, expr.target.name.lexeme, currentReg))
+                            currentReg
                         } else {
                             // Global variable - load, op, store
                             val tmpReg = freshReg()
@@ -569,6 +624,11 @@ class AstLowerer {
                         if (reg != null) {
                             lowerExpr(expr.value, reg)
                             reg
+                        } else if (expr.target.name.lexeme in fieldNames) {
+                            // Field assignment: self.fieldName = value
+                            val src = lowerExpr(expr.value, freshReg())
+                            emit(IrInstr.SetField(0, expr.target.name.lexeme, src))
+                            src
                         } else {
                             val src = lowerExpr(expr.value, freshReg())
                             emit(StoreGlobal(expr.target.name.lexeme, src))

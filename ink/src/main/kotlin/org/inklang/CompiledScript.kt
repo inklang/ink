@@ -15,4 +15,9 @@ class CompiledScript(private val chunk: Chunk) {
         // TODO: Wire up context (log, print, event handlers) to VM globals
         vm.execute(chunk)
     }
+
+    /**
+     * Returns the compiled chunk for direct VM execution.
+     */
+    fun getChunk(): Chunk = chunk
 }

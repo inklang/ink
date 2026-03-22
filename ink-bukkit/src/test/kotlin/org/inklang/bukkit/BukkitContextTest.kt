@@ -5,14 +5,17 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
+import org.inklang.InkCompiler
 import org.inklang.InkDb
 import org.inklang.InkIo
 import org.inklang.InkJson
+import org.inklang.lang.Value
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockbukkit.mockbukkit.MockBukkit
 import org.mockbukkit.mockbukkit.ServerMock
+import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -98,5 +101,40 @@ class BukkitContextTest {
 
         // Only print should call sender.sendMessage
         verify { sender.sendMessage("§f[Ink] Print message") }
+    }
+
+    @Test
+    fun `config preloading integration test`() {
+        // Create a temp dir with a server-config.yml file
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "ink-bukkit-test-${System.nanoTime()}").also { it.mkdirs() }
+        val settingsFile = File(tempDir, "server-config.yml")
+        settingsFile.writeText("""
+            host: "mc.example.com"
+            maxPlayers: 100
+        """.trimIndent())
+
+        try {
+            val compiler = InkCompiler()
+            val script = """
+                config ServerConfig {
+                    host: string = "localhost"
+                    maxPlayers: int = 20
+                }
+                print(ServerConfig.host)
+                print(ServerConfig.maxPlayers)
+            """.trimIndent()
+            val compiled = compiler.compile(script, "server-config")
+
+            // Verify preloadConfigs works at this level
+            val preloaded = compiled.preloadConfigs(tempDir.absolutePath)
+            assertEquals(1, preloaded.size)
+
+            val config = preloaded["ServerConfig"]!!
+            assertEquals("mc.example.com", (config.fields["host"] as Value.String).value)
+            assertEquals(100, (config.fields["maxPlayers"] as Value.Int).value)
+        } finally {
+            settingsFile.delete()
+            tempDir.deleteRecursively()
+        }
     }
 }

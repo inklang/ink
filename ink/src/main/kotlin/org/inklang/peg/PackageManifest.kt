@@ -16,6 +16,17 @@ data class PackageManifest(
         val pub: List<String> = emptyList()
     )
 
+    /**
+     * Validates that required fields are non-empty.
+     * @throws IllegalArgumentException if name, version, or inkVersion is blank
+     */
+    private fun validate(): PackageManifest {
+        require(name.isNotBlank()) { "Manifest 'name' must not be blank" }
+        require(version.isNotBlank()) { "Manifest 'version' must not be blank" }
+        require(inkVersion.isNotBlank()) { "Manifest 'ink_version' must not be blank" }
+        return this
+    }
+
     companion object {
         /**
          * Parse a TOML manifest string into a PackageManifest.
@@ -86,7 +97,7 @@ data class PackageManifest(
                 description = description,
                 dependencies = dependencies,
                 visibility = Visibility(pubScript, pub)
-            )
+            ).validate()
         }
 
         private fun parseStringValue(value: String): String {

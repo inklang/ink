@@ -111,10 +111,12 @@ class PackageLoaderTest {
             declarations = emptyMap(),
             rules = emptyMap()
         )
+        // Use a stub ClassLoader that doesn't load from any jar
+        val stubClassLoader = object : ClassLoader() {}
         return PackageLoader.LoadedPackage(
             manifest = manifest,
             grammar = grammar,
-            classLoader = null!!
+            classLoader = stubClassLoader
         )
     }
 

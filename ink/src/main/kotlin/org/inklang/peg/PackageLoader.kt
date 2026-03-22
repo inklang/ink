@@ -54,6 +54,7 @@ class PackageLoader(private val packagesDir: File) {
                 classLoader = classLoader
             )
         } catch (e: Exception) {
+            System.err.println("Failed to load package from ${jarFile.name}: ${e.message}")
             null
         }
     }
@@ -69,6 +70,7 @@ class PackageLoader(private val packagesDir: File) {
                 }
             }
         } catch (e: Exception) {
+            System.err.println("Error reading manifest from ${jarFile.name}: ${e.message}")
             null
         }
     }

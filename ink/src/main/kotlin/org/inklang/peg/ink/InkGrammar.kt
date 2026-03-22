@@ -60,6 +60,10 @@ class InkGrammar {
             private val ident = identifier()
 
             override fun parse(input: String, position: Int): ParseResult<Expr> {
+                // Try parenthesized expressions first (before identifiers since parentheses don't look like identifiers)
+                val groupingResult = grouping(callExpr(primary())).parse(input, position)
+                if (groupingResult is ParseResult.Success) return groupingResult
+
                 // Try literals first in order of specificity
                 // Float before integer since floats can look like integers with a decimal
 

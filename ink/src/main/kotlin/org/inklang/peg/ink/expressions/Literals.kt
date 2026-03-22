@@ -92,7 +92,7 @@ fun floatLiteral(): Parser<Expr> {
             val value = lexeme.toDoubleOrNull() ?: return ParseResult.Failure("float literal", position)
 
             return ParseResult.Success(
-                Expr.LiteralExpr(Value.Double(value)),
+                Expr.LiteralExpr(Value.Float(value.toFloat())),
                 end
             )
         }

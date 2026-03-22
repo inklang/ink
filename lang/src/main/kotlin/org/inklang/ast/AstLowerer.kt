@@ -111,6 +111,10 @@ class AstLowerer {
             emit(IrInstr.LoadImm(dst, tableClassIdx))
             emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
         }
+        is Stmt.TryCatchStmt -> {
+            // TODO: implement try-catch lowering
+            lowerBlock(stmt.body)
+        }
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {
@@ -570,6 +574,11 @@ class AstLowerer {
             emit(IrInstr.Label(elseLabel))
             lowerExpr(expr.elseBranch, dst)
             emit(IrInstr.Label(endLabel))
+            dst
+        }
+        is Expr.ThrowExpr -> {
+            // TODO: implement throw lowering
+            lowerExpr(expr.value, dst)
             dst
         }
     }

@@ -25,4 +25,8 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+    // Use temp directory for test results to avoid Windows file locking issues
+    reports {
+        html.outputLocation.set(layout.buildDirectory.dir("test-reports"))
+    }
 }

@@ -68,12 +68,28 @@ class InkGrammar {
             private val bool = booleanLiteral()
             private val nullLit = nullLiteral()
             private val ident = identifier()
+            private val lparen = literalToken("(")
 
             override fun parse(input: String, position: Int): ParseResult<Expr> {
-                // Try parenthesized expressions (before identifiers since parentheses don't look like identifiers)
-                // Use grouping(expression) NOT grouping(callExpr(primary())) to avoid infinite recursion
-                val groupingResult = grouping(expression).parse(input, position)
-                if (groupingResult is ParseResult.Success) return groupingResult
+                // Check for opening paren first - if present, parse grouped expression
+                val lparenResult = lparen.parse(input, position)
+                if (lparenResult is ParseResult.Success<PegToken>) {
+                    // Parse expression inside parentheses
+                    val innerResult = expression.parse(input, lparenResult.position)
+                    return when (innerResult) {
+                        is ParseResult.Success<Expr> -> {
+                            val rparenResult = literalToken(")").parse(input, innerResult.position)
+                            when (rparenResult) {
+                                is ParseResult.Success<PegToken> -> ParseResult.Success(
+                                    Expr.GroupExpr(innerResult.value),
+                                    rparenResult.position
+                                )
+                                is ParseResult.Failure -> ParseResult.Failure(")", rparenResult.position)
+                            }
+                        }
+                        is ParseResult.Failure -> ParseResult.Failure(")", innerResult.position)
+                    }
+                }
 
                 // Try literals first in order of specificity
                 // Float before integer since floats can look like integers with a decimal

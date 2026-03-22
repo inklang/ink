@@ -38,7 +38,7 @@ fun grouping(sub: Parser<Expr>): Parser<Expr> {
             }
 
             val sourcePos = SourcePosition.fromOffset(input, position)
-            val parenToken = Token(TokenType.L_PAREN, "()", sourcePos.line, sourcePos.column)
+            val parenToken = Token(TokenType.L_PAREN, "(", sourcePos.line, sourcePos.column)
             return ParseResult.Success(
                 Expr.GroupExpr(contentSuccess.value),
                 rparenSuccess.position

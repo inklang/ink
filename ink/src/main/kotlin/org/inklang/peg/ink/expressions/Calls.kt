@@ -37,7 +37,7 @@ fun callExpr(base: Parser<Expr>): Parser<Expr> {
                 if (rparenCheck is ParseResult.Success) {
                     val rparenCheckSuccess = rparenCheck as ParseResult.Success<PegToken>
                     val sourcePos = SourcePosition.fromOffset(input, position)
-                    val parenToken = Token(TokenType.L_PAREN, "()", sourcePos.line, sourcePos.column)
+                    val parenToken = Token(TokenType.L_PAREN, "(", sourcePos.line, sourcePos.column)
                     current = Expr.CallExpr(current, parenToken, args)
                     currentPos = rparenCheckSuccess.position
                     continue
@@ -71,7 +71,7 @@ fun callExpr(base: Parser<Expr>): Parser<Expr> {
                 }
 
                 val sourcePos = SourcePosition.fromOffset(input, position)
-                val parenToken = Token(TokenType.L_PAREN, "()", sourcePos.line, sourcePos.column)
+                val parenToken = Token(TokenType.L_PAREN, "(", sourcePos.line, sourcePos.column)
                 current = Expr.CallExpr(current, parenToken, args)
                 currentPos = rparenSuccess.position
             }
@@ -126,7 +126,7 @@ fun methodCallExpr(base: Parser<Expr>): Parser<Expr> {
                 if (rparenCheck is ParseResult.Success) {
                     val rparenCheckSuccess = rparenCheck as ParseResult.Success<PegToken>
                     val sourcePos = SourcePosition.fromOffset(input, position)
-                    val parenToken = Token(TokenType.L_PAREN, "()", sourcePos.line, sourcePos.column)
+                    val parenToken = Token(TokenType.L_PAREN, "(", sourcePos.line, sourcePos.column)
                     val getExpr = Expr.GetExpr(current, nameToken)
                     current = Expr.CallExpr(getExpr, parenToken, args)
                     currentPos = rparenCheckSuccess.position
@@ -160,7 +160,7 @@ fun methodCallExpr(base: Parser<Expr>): Parser<Expr> {
 
                 val getExpr = Expr.GetExpr(current, nameToken)
                 val sourcePos = SourcePosition.fromOffset(input, position)
-                val parenToken = Token(TokenType.L_PAREN, "()", sourcePos.line, sourcePos.column)
+                val parenToken = Token(TokenType.L_PAREN, "(", sourcePos.line, sourcePos.column)
                 current = Expr.CallExpr(getExpr, parenToken, args)
                 currentPos = rparenSuccess.position
             }

@@ -26,19 +26,16 @@ class CompilerPipeline {
     /**
      * Parse source code to a list of AST statements.
      *
-     * Uses InkGrammar.expression to parse a single expression, then wraps it as Stmt.ExprStmt.
-     * This allows expressions to be used as statements in the pipeline.
+     * Uses InkGrammar.program to parse multiple statements.
      *
      * @param source The source code to parse
      * @return List of parsed statements
      */
     fun parse(source: String): List<Stmt> {
-        val result = inkGrammar.expression.parse(source, 0)
+        val result = inkGrammar.parseProgram(source)
         return when (result) {
             is ParseResult.Success -> {
-                val expr = result.value
-                // Wrap the expression as a statement
-                listOf(Stmt.ExprStmt(expr))
+                result.value
             }
             is ParseResult.Failure -> {
                 throw CompilationException(

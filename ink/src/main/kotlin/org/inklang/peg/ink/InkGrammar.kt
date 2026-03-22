@@ -1,6 +1,7 @@
 package org.inklang.peg.ink
 
 import org.inklang.lang.Expr
+import org.inklang.lang.Stmt
 import org.inklang.peg.ink.expressions.binaryOp
 import org.inklang.peg.ink.expressions.booleanLiteral
 import org.inklang.peg.ink.expressions.buildExpressionParser
@@ -14,6 +15,15 @@ import org.inklang.peg.ink.expressions.nullLiteral
 import org.inklang.peg.ink.expressions.orToken
 import org.inklang.peg.ink.expressions.prefixOp
 import org.inklang.peg.ink.expressions.stringLiteral
+import org.inklang.peg.ink.statements.blockStatement
+import org.inklang.peg.ink.statements.returnStatement
+import org.inklang.peg.ink.statements.breakStatement
+import org.inklang.peg.ink.statements.nextStatement
+import org.inklang.peg.ink.statements.ifStatement
+import org.inklang.peg.ink.statements.whileStatement
+import org.inklang.peg.ink.statements.forStatement
+import org.inklang.peg.ink.statements.varDeclaration
+import org.inklang.peg.ink.statements.fnDeclaration
 import org.inklang.peg.BaseParser
 import org.inklang.peg.ParseResult
 import org.inklang.peg.Parser
@@ -336,9 +346,118 @@ class InkGrammar {
     val expression: Parser<Expr> by lazy { assignment(unary()) }
 
     /**
+     * Parses a single statement.
+     */
+    val statement: Parser<Stmt> by lazy {
+        object : BaseParser<Stmt>() {
+            override fun parse(input: String, position: Int): ParseResult<Stmt> {
+                var pos = position
+
+                // Skip whitespace and newlines
+                while (pos < input.length && (input[pos].isWhitespace() || input[pos] == '\n')) {
+                    pos++
+                }
+
+                if (pos >= input.length) {
+                    return ParseResult.Failure("statement", position)
+                }
+
+                // Try return statement
+                val retResult = returnStatement { expression }.parse(input, pos)
+                if (retResult is ParseResult.Success) return retResult
+
+                // Try var declaration
+                val varResult = varDeclaration { expression }.parse(input, pos)
+                if (varResult is ParseResult.Success) return varResult
+
+                // Try fn declaration
+                val fnResult = fnDeclaration { expression }.parse(input, pos)
+                if (fnResult is ParseResult.Success) return fnResult
+
+                // Try if statement
+                val ifResult = ifStatement { expression }.parse(input, pos)
+                if (ifResult is ParseResult.Success) return ifResult
+
+                // Try while statement
+                val whileResult = whileStatement { expression }.parse(input, pos)
+                if (whileResult is ParseResult.Success) return whileResult
+
+                // Try for statement
+                val forResult = forStatement { expression }.parse(input, pos)
+                if (forResult is ParseResult.Success) return forResult
+
+                // Try break
+                val breakResult = breakStatement().parse(input, pos)
+                if (breakResult is ParseResult.Success) return breakResult
+
+                // Try next
+                val nextResult = nextStatement().parse(input, pos)
+                if (nextResult is ParseResult.Success) return nextResult
+
+                // Try block statement (nested)
+                val blockResult = blockStatement { expression }.parse(input, pos)
+                if (blockResult is ParseResult.Success) return blockResult
+
+                // Try expression as statement
+                val exprResult = expression.parse(input, pos)
+                when (exprResult) {
+                    is ParseResult.Success -> {
+                        return ParseResult.Success(Stmt.ExprStmt(exprResult.value), exprResult.position)
+                    }
+                    is ParseResult.Failure -> {
+                        return exprResult
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Parses a complete program (multiple statements).
+     */
+    val program: Parser<List<Stmt>> by lazy {
+        object : BaseParser<List<Stmt>>() {
+            override fun parse(input: String, position: Int): ParseResult<List<Stmt>> {
+                val results = mutableListOf<Stmt>()
+                var currentPos = position
+
+                while (currentPos < input.length) {
+                    // Skip whitespace and newlines
+                    while (currentPos < input.length && (input[currentPos].isWhitespace() || input[currentPos] == '\n')) {
+                        currentPos++
+                    }
+
+                    if (currentPos >= input.length) break
+
+                    val stmtResult = statement.parse(input, currentPos)
+                    when (stmtResult) {
+                        is ParseResult.Success -> {
+                            results.add(stmtResult.value)
+                            currentPos = stmtResult.position
+                        }
+                        is ParseResult.Failure -> {
+                            // Stop parsing - can't parse any more statements
+                            break
+                        }
+                    }
+                }
+
+                return ParseResult.Success(results, currentPos)
+            }
+        }
+    }
+
+    /**
      * Parses a complete expression string.
      */
     fun parseExpression(input: String): ParseResult<Expr> {
         return expression.parse(input, 0)
+    }
+
+    /**
+     * Parses a complete program string.
+     */
+    fun parseProgram(input: String): ParseResult<List<Stmt>> {
+        return program.parse(input, 0)
     }
 }

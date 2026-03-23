@@ -48,9 +48,17 @@ class VM {
         var ip: Int = 0,
         val regs: Array<Value?> = arrayOfNulls(16),
         var returnDst: Int = 0,  // Where to store the return value in caller
-        val argBuffer: ArrayDeque<Value> = ArrayDeque()  // Staging buffer for PUSH_ARG
+        val argBuffer: ArrayDeque<Value> = ArrayDeque(),  // Staging buffer for PUSH_ARG
+        val spills: Array<Value?> = arrayOfNulls(chunk.spillSlotCount),
+        var thrownValue: Value? = null,
+        var pendingReturnValue: Value? = null,
+        val handlerStack: MutableList<HandlerRecord> = mutableListOf()
     ) {
-        val spills: Array<Value?> = arrayOfNulls(chunk.spillSlotCount)
+        data class HandlerRecord(
+            val finallyPc: Int?,   // bytecode offset, null if no finally
+            val catchPc: Int?,    // bytecode offset, null if no catch
+            val scopeStartIp: Int
+        )
     }
 
     fun execute(chunk: Chunk) {
@@ -188,7 +196,8 @@ class VM {
                     frame.argBuffer.addLast(frame.regs[src1] ?: error("Null value in PUSH_ARG at reg $src1 (ip=${frame.ip - 1}, chunk.constants=${frame.chunk.constants.take(5)}, strings=${frame.chunk.strings.take(3)})"))
                 }
                 OpCode.RETURN -> {
-                    val returnVal = frame.regs[src1]
+                    val returnVal = frame.pendingReturnValue ?: frame.regs[src1]
+                    frame.pendingReturnValue = null  // clear after use
                     val returnDst = frame.returnDst
                     frames.removeLast()
                     if (frames.isNotEmpty()) {
@@ -364,17 +373,35 @@ class VM {
                     handler(cst)
                 }
                 OpCode.TRY_START -> {
-                    // Handler record pushed here - full implementation in Step 15
-                    // dst = finally label idx (0xF=none), imm = catch label idx (0xFFF=none)
+                    val finallyPc = if (dst != 0x0F) frame.chunk.labelOffsets[dst] else null
+                    val catchPc = if (imm != 0xFFF) frame.chunk.labelOffsets[imm] else null
+                    frame.handlerStack.add(CallFrame.HandlerRecord(finallyPc, catchPc, frame.ip))
                 }
                 OpCode.TRY_END -> {
-                    // Handler record popped - full implementation in Step 15
+                    if (frame.handlerStack.isNotEmpty()) {
+                        frame.handlerStack.removeLast()
+                    }
                 }
                 OpCode.THROW -> {
-                    // Throw propagation - full implementation in Step 15
+                    val thrown = frame.regs[src1]
+                    frame.thrownValue = thrown
+                    unwind(frame, frames)
                 }
                 OpCode.EXIT_TRY -> {
-                    // Exit try with return value - full implementation in Step 15
+                    val returnVal = frame.regs[src1]
+                    frame.pendingReturnValue = returnVal
+                    if (frame.handlerStack.isNotEmpty()) {
+                        val record = frame.handlerStack.removeLast()
+                        if (record.finallyPc != null) {
+                            frame.ip = record.finallyPc
+                            return
+                        }
+                    }
+                    // No finally — execute return immediately
+                    frames.removeLast()
+                    if (frames.isNotEmpty()) {
+                        frames.last().regs[frame.returnDst] = returnVal
+                    }
                 }
             }
         }
@@ -384,6 +411,26 @@ class VM {
         is Value.Boolean -> !v.value
         is Value.Null  -> true
         else           -> false
+    }
+
+    private tailrec fun unwind(frame: CallFrame, frames: ArrayDeque<CallFrame>) {
+        if (frame.handlerStack.isNotEmpty()) {
+            val record = frame.handlerStack.removeLast()
+            if (record.finallyPc != null) {
+                frame.ip = record.finallyPc
+                return
+            }
+            if (record.catchPc != null) {
+                frame.ip = record.catchPc
+                return
+            }
+        }
+        frames.removeLast()
+        if (frames.isNotEmpty()) {
+            unwind(frames.last(), frames)
+        } else {
+            throw RuntimeException("Uncaught: ${frame.thrownValue}")
+        }
     }
 
     private fun toDouble(v: Value): Double = when (v) {

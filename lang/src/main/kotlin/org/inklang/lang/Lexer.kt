@@ -51,7 +51,11 @@ private class Lexer(val source: String) {
             "has" to TokenType.KW_HAS,
             "table" to TokenType.KW_TABLE,
             "key" to TokenType.KW_KEY,
-            "config" to TokenType.KW_CONFIG
+            "config" to TokenType.KW_CONFIG,
+            "try" to TokenType.KW_TRY,
+            "catch" to TokenType.KW_CATCH,
+            "finally" to TokenType.KW_FINALLY,
+            "throw" to TokenType.KW_THROW
         )
     }
 

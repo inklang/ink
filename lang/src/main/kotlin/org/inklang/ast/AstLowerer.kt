@@ -13,6 +13,8 @@ class AstLowerer {
     private var breakLabel: IrLabel? = null
     private var nextLabel: IrLabel? = null
     private var lambdaCounter = 0
+    private var activeFinally: IrLabel? = null
+    private val THROWN_VALUE_REG = 15
 
     private fun freshReg(): Int = regCounter++
     private fun freshLabel(): IrLabel = IrLabel(labelCounter++)
@@ -46,8 +48,14 @@ class AstLowerer {
         is Stmt.WhileStmt -> lowerWhile(stmt)
         is Stmt.ForRangeStmt -> lowerForRange(stmt)
         is Stmt.ReturnStmt -> lowerReturn(stmt)
-        Stmt.BreakStmt -> emit(IrInstr.Jump(breakLabel ?: error("break outside loop")))
-        Stmt.NextStmt -> emit(IrInstr.Jump(nextLabel ?: error("next outside loop")))
+        Stmt.BreakStmt -> {
+            if (activeFinally != null) emit(IrInstr.ExitTry(0))
+            emit(IrInstr.Jump(breakLabel ?: error("break outside loop")))
+        }
+        Stmt.NextStmt -> {
+            if (activeFinally != null) emit(IrInstr.ExitTry(0))
+            emit(IrInstr.Jump(nextLabel ?: error("next outside loop")))
+        }
         is Stmt.ClassStmt -> lowerClass(stmt)
         is Stmt.EnumStmt -> {
             val nsClassReg = freshReg()
@@ -111,10 +119,7 @@ class AstLowerer {
             emit(IrInstr.LoadImm(dst, tableClassIdx))
             emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
         }
-        is Stmt.TryCatchStmt -> {
-            // TODO: implement try-catch lowering
-            lowerBlock(stmt.body)
-        }
+        is Stmt.TryCatchStmt -> lowerTryCatch(stmt)
         is Stmt.PluginDeclStmt -> {
             emit(IrInstr.CallHandler(stmt.keyword, stmt.cst))
         }
@@ -230,6 +235,46 @@ class AstLowerer {
 
         breakLabel = prevBreak
         nextLabel = prevNext
+    }
+
+    private fun lowerTryCatch(stmt: Stmt.TryCatchStmt) {
+        val catchLabel = stmt.catchBody?.let { freshLabel() }
+        val finallyLabel = stmt.finallyBody?.let { freshLabel() }
+        val endLabel = freshLabel()
+
+        val prevFinally = activeFinally
+        activeFinally = finallyLabel
+
+        emit(IrInstr.TryStart(finallyLabel?.id, catchLabel?.id))
+        lowerBlock(stmt.body)
+        emit(IrInstr.TryEnd)
+        emit(IrInstr.Jump(endLabel))
+
+        activeFinally = prevFinally
+
+        catchLabel?.let {
+            emit(IrInstr.Label(it))
+            if (stmt.catchVar != null) {
+                val slot = freshReg()
+                locals[stmt.catchVar.lexeme] = slot
+                emit(IrInstr.Move(slot, THROWN_VALUE_REG))
+            }
+            lowerBlock(stmt.catchBody!!)
+            freeLocal(stmt.catchVar?.lexeme)
+        }
+
+        finallyLabel?.let {
+            emit(IrInstr.Label(it))
+            activeFinally = it
+            lowerBlock(stmt.finallyBody!!)
+            activeFinally = prevFinally
+        }
+
+        emit(IrInstr.Label(endLabel))
+    }
+
+    private fun freeLocal(name: String?) {
+        if (name != null) locals.remove(name)
     }
 
     private fun lowerReturn(stmt: Stmt.ReturnStmt) {
@@ -580,8 +625,8 @@ class AstLowerer {
             dst
         }
         is Expr.ThrowExpr -> {
-            // TODO: implement throw lowering
-            lowerExpr(expr.value, dst)
+            val src = lowerExpr(expr.value, THROWN_VALUE_REG)
+            emit(IrInstr.ThrowInstr(src))
             dst
         }
     }

@@ -313,6 +313,9 @@ class ControlFlowGraph(
                     // Labels are leaders
                     is IrInstr.Label -> leaders.add(idx)
 
+                    // TRY_START is a basic block boundary (handler stack change)
+                    is IrInstr.TryStart -> leaders.add(idx)
+
                     // Instructions after terminals are leaders
                     is IrInstr.Jump, is IrInstr.JumpIfFalse, is IrInstr.Return,
                     is IrInstr.Break, is IrInstr.Next -> {

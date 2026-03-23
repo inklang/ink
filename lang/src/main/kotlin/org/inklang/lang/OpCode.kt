@@ -56,4 +56,8 @@ enum class OpCode(val code: Byte) {
     POW(0x28),      // dst = src1 ^ src2
     HAS(0x29),      // dst = obj.has(field) — true if field exists
     CALL_HANDLER(0x2A),  // stub: dispatch plugin handler with CST data
+    TRY_START(0x2B),    // dst = finally label idx (0xF=none), imm = catch label idx (0xFFF=none)
+    TRY_END(0x2C),       // pop handler record (shared: normal try exit + catch/finally cleanup)
+    THROW(0x2D),         // src1 = register containing thrown value
+    EXIT_TRY(0x2E),      // imm = returnDst register index
 }

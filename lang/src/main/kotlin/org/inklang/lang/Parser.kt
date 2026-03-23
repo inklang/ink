@@ -117,6 +117,7 @@ class Parser(
             check(TokenType.KW_ENUM) -> parseEnum()
             check(TokenType.KW_TABLE) -> parseTable()
             check(TokenType.KW_CONFIG) -> parseConfig()
+            check(TokenType.KW_TRY) -> parseTryCatch()
             else -> {
                 // Check for plugin declaration before falling through to expression
                 if (check(TokenType.IDENTIFIER) && pluginRegistry?.isPluginKeyword(peek().lexeme) == true) {
@@ -160,6 +161,31 @@ class Parser(
         val condition = parseExpression(0)
         val body = parseBlock()
         return Stmt.WhileStmt(condition, body)
+    }
+
+    private fun parseTryCatch(): Stmt {
+        consume(TokenType.KW_TRY, "Expected 'try'")
+        val tryBody = parseBlock()
+        var catchVar: Token? = null
+        var catchBody: Stmt.BlockStmt? = null
+        var finallyBody: Stmt.BlockStmt? = null
+
+        if (match(TokenType.KW_CATCH)) {
+            if (check(TokenType.IDENTIFIER)) {
+                catchVar = advance()
+            }
+            catchBody = parseBlock()
+        }
+
+        if (match(TokenType.KW_FINALLY)) {
+            finallyBody = parseBlock()
+        }
+
+        if (catchBody == null && finallyBody == null) {
+            throw error(peek(), "try block requires at least one of catch or finally")
+        }
+
+        return Stmt.TryCatchStmt(tryBody, catchVar, catchBody, finallyBody)
     }
 
     private fun parseFor(): Stmt {

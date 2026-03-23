@@ -263,4 +263,88 @@ class InkCompilerTest {
         script.execute(context)
         assertEquals(listOf("anonymous"), context.prints)
     }
+
+    @Test
+    fun `function with default parameter uses default when not provided`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            fn greet(name: String = "World") {
+                print(name)
+            }
+            greet()
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("World"), context.prints)
+    }
+
+    @Test
+    fun `function with default parameter uses provided value`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            fn greet(name: String = "World") {
+                print(name)
+            }
+            greet("Alice")
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("Alice"), context.prints)
+    }
+
+    @Test
+    fun `function with multiple defaults fills in order`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            fn add(a: Int, b: Int = 10, c: Int = 20) -> Int {
+                a + b + c
+            }
+            print(add(1))
+            print(add(1, 2))
+            print(add(1, 2, 3))
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("31", "23", "6"), context.prints)
+    }
+
+    @Test
+    fun `class constructor with default parameters`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            class Person {
+                var name: String
+                fn new(name: String = "Anonymous") {
+                    this.name = name
+                }
+            }
+            val p1 = Person::new()
+            val p2 = Person::new("Bob")
+            print(p1.name)
+            print(p2.name)
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("Anonymous", "Bob"), context.prints)
+    }
+
+    @Test
+    fun `default value can reference earlier parameter`() {
+        val compiler = InkCompiler()
+        val script = compiler.compile("""
+            fn scale(value: Int, multiplier: Int = value * 2) -> Int {
+                value * multiplier
+            }
+            print(scale(5))
+            print(scale(5, 3))
+        """, "test")
+
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("50", "15"), context.prints)
+    }
 }

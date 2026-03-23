@@ -829,5 +829,6 @@ open class AstLowerer {
         }
         // AnnotationExpr should not appear at runtime - annotations are compile-time only
         is Expr.AnnotationExpr -> error("AnnotationExpr should not appear in lowered IR")
+        is Expr.NamedArgExpr -> error("NamedArgExpr should not appear in lowered IR")
     }
 }

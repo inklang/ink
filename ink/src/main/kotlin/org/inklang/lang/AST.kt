@@ -83,6 +83,8 @@ sealed class Expr {
 
     data class ElvisExpr(val left: Expr, val right: Expr) : Expr()
 
+    data class NamedArgExpr(val name: Token, val value: Expr) : Expr()
+
     data class ThrowExpr(val value: Expr) : Expr()
 
     // Annotation expression: @annotationName(arg1=value1, arg2=value2)

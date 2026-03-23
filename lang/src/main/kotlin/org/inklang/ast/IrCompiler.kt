@@ -62,6 +62,7 @@ class IrCompiler {
                 offset++
             }
         }
+        chunk.labelOffsets.putAll(labelOffsets)
 
         // second pass: emit bytecode
         for (instr in result.instrs) {
@@ -199,6 +200,20 @@ class IrCompiler {
                     val cstIdx = chunk.cstTable.size
                     chunk.cstTable.add(instr.cst)
                     chunk.write(OpCode.CALL_HANDLER, imm = cstIdx)
+                }
+                is IrInstr.TryStart -> {
+                    val finallyPc = instr.finallyLabelIdx?.let { labelOffsets[it] } ?: 0xF
+                    val catchPc = instr.catchLabelIdx?.let { labelOffsets[it] } ?: 0xFFF
+                    chunk.write(OpCode.TRY_START, dst = finallyPc, imm = catchPc)
+                }
+                is IrInstr.TryEnd -> {
+                    chunk.write(OpCode.TRY_END)
+                }
+                is IrInstr.ThrowInstr -> {
+                    chunk.write(OpCode.THROW, src1 = instr.src)
+                }
+                is IrInstr.ExitTry -> {
+                    chunk.write(OpCode.EXIT_TRY, imm = instr.returnDst)
                 }
             }
         }

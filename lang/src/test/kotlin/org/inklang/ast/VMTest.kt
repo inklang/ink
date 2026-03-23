@@ -399,6 +399,68 @@ class VMTest {
         }
     }
 
+    // try/catch/finally runtime tests
+    @Test
+    fun testTryCatchRuntime() {
+        // Test without SSA optimization to isolate issues
+        val source = """
+            try {
+                throw "error"
+            } catch e {
+                print("caught:")
+                print(e)
+            }
+            print("done")
+        """.trimIndent()
+        val output = mutableListOf<String>()
+        val tokens = tokenize(source)
+        val stmts = Parser(tokens).parse()
+        val folder = ConstantFolder()
+        val folded = stmts.map { folder.foldStmt(it) }
+        val result = AstLowerer().lower(folded)
+
+        // Skip SSA optimization and compile directly
+        val ranges = LivenessAnalyzer().analyze(result.instrs)
+        val allocResult = RegisterAllocator().allocate(ranges)
+        val resolved = SpillInserter().insert(result.instrs, allocResult, ranges)
+        val chunk = IrCompiler().compile(AstLowerer.LoweredResult(resolved, result.constants))
+        chunk.spillSlotCount = allocResult.spillSlotCount
+
+        val vm = VM()
+        vm.globals["print"] = Value.NativeFunction { args ->
+            output.add(args.joinToString(" ") { valueToString(it) })
+            Value.Null
+        }
+        vm.execute(chunk)
+        assertEquals(listOf("caught:", "error", "done"), output)
+    }
+
+    @Test
+    fun testTryFinallyAlwaysRuns() {
+        val output = compileAndRun("""
+            var x = 0
+            try {
+                x = 1
+            } finally {
+                print("finally")
+            }
+            print(x)
+        """.trimIndent())
+        assertEquals(listOf("finally", "1"), output)
+    }
+
+    @Test
+    fun testThrowAnyValue() {
+        val output = compileAndRun("""
+            try {
+                throw 42
+            } catch e {
+                print(e)
+            }
+        """.trimIndent())
+        assertEquals(listOf("42"), output)
+    }
+
     // Integration tests
     @Ignore("SSA round-trip bug with control flow")
     @Test

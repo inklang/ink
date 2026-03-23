@@ -41,6 +41,7 @@ sealed class IrInstr {
     data class CallHandler(val handlerName: String, val cst: org.inklang.grammar.CstNode) : IrInstr()
     data class TryStart(val finallyLabelIdx: Int?, val catchLabelIdx: Int?) : IrInstr()
     object TryEnd : IrInstr()
+    data class TryEndFinally(val finallyLabelIdx: Int) : IrInstr()
     data class ThrowInstr(val src: Int) : IrInstr()
     data class ExitTry(val returnDst: Int) : IrInstr()
 }

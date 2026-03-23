@@ -168,10 +168,16 @@ class SsaBuilder(
         for (block in cfg.blocks) {
             val ssaBlock = blockMap[block.id] ?: continue
 
+            var ssaIndex = 0
             for (instr in block.instrs) {
                 val ssaInstr = convertInstr(instr)
                 if (ssaInstr != null) {
                     ssaBlock.instrs.add(ssaInstr)
+                    ssaIndex++
+                } else {
+                    // Preserve IR-only instructions (TryStart, TryEnd, TryEndFinally, etc.)
+                    // Pair with the NEXT SSA instruction index (will be inserted before it)
+                    ssaBlock.preservedIrInstrs.add(Pair(ssaIndex, instr))
                 }
             }
         }
@@ -238,6 +244,7 @@ class SsaBuilder(
         is IrInstr.CallHandler -> SsaInstr.CallHandler(instr.handlerName, instr.cst)
         is IrInstr.TryStart,
         is IrInstr.TryEnd,
+        is IrInstr.TryEndFinally,
         is IrInstr.ThrowInstr,
         is IrInstr.ExitTry -> null  // Not SSA-converted (handled specially)
     }

@@ -209,6 +209,9 @@ class IrCompiler {
                 is IrInstr.TryEnd -> {
                     chunk.write(OpCode.TRY_END)
                 }
+                is IrInstr.TryEndFinally -> {
+                    chunk.write(OpCode.TRY_END_FINALLY, dst = labelOffsets[instr.finallyLabelIdx]!!)
+                }
                 is IrInstr.ThrowInstr -> {
                     chunk.write(OpCode.THROW, src1 = instr.src)
                 }

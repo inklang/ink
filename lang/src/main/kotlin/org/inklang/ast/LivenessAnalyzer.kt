@@ -112,6 +112,7 @@ class LivenessAnalyzer {
                 is IrInstr.CallHandler -> {} // no registers used
                 is IrInstr.TryStart,
                 is IrInstr.TryEnd,
+                is IrInstr.TryEndFinally,
                 is IrInstr.ThrowInstr,
                 is IrInstr.ExitTry -> {} // no register activity (control-flow only)
             }

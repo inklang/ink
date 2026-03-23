@@ -373,14 +373,23 @@ class VM {
                     handler(cst)
                 }
                 OpCode.TRY_START -> {
-                    val finallyPc = if (dst != 0x0F) frame.chunk.labelOffsets[dst] else null
-                    val catchPc = if (imm != 0xFFF) frame.chunk.labelOffsets[imm] else null
+                    // dst and imm are already bytecode offsets (like Jump's imm), not label IDs
+                    val finallyPc = if (dst != 0x0F) dst else null
+                    val catchPc = if (imm != 0xFFF) imm else null
                     frame.handlerStack.add(CallFrame.HandlerRecord(finallyPc, catchPc, frame.ip))
                 }
                 OpCode.TRY_END -> {
                     if (frame.handlerStack.isNotEmpty()) {
                         frame.handlerStack.removeLast()
                     }
+                }
+                OpCode.TRY_END_FINALLY -> {
+                    // Pop the handler and jump to finally
+                    if (frame.handlerStack.isNotEmpty()) {
+                        frame.handlerStack.removeLast()
+                    }
+                    // dst is the bytecode offset of the finally label (resolved in IrCompiler)
+                    frame.ip = dst
                 }
                 OpCode.THROW -> {
                     val thrown = frame.regs[src1]

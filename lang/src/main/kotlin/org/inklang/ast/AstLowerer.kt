@@ -247,7 +247,10 @@ class AstLowerer {
 
         emit(IrInstr.TryStart(finallyLabel?.id, catchLabel?.id))
         lowerBlock(stmt.body)
-        emit(IrInstr.TryEnd)
+        finallyLabel?.let {
+            activeFinally = prevFinally  // reset BEFORE TryEndFinally pops handler
+            emit(IrInstr.TryEndFinally(it.id))
+        } ?: emit(IrInstr.TryEnd)
         emit(IrInstr.Jump(endLabel))
 
         activeFinally = prevFinally

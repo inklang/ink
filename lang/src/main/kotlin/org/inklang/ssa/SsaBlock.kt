@@ -10,7 +10,9 @@ class SsaBlock(
     val id: Int,
     val label: IrLabel?,
     val phiFunctions: MutableList<PhiFunction> = mutableListOf(),
-    val instrs: MutableList<SsaInstr> = mutableListOf()
+    val instrs: MutableList<SsaInstr> = mutableListOf(),
+    // IR-only instructions (TryStart, TryEnd, etc.) with the SSA instruction index they precede
+    val preservedIrInstrs: MutableList<Pair<Int, org.inklang.lang.IrInstr>> = mutableListOf()
 ) {
     val predecessors: MutableSet<Int> = mutableSetOf()
     val successors: MutableSet<Int> = mutableSetOf()

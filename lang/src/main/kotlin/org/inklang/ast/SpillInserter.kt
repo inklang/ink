@@ -117,6 +117,7 @@ class SpillInserter {
                 is IrInstr.CallHandler -> instr
                 is IrInstr.TryStart,
                 is IrInstr.TryEnd,
+                is IrInstr.TryEndFinally,
                 is IrInstr.ThrowInstr,
                 is IrInstr.ExitTry -> instr
             }

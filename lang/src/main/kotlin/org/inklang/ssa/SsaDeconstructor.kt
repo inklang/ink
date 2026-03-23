@@ -43,25 +43,69 @@ class SsaDeconstructor(private val ssaFunc: SsaFunction) {
                 result.add(IrInstr.Label(block.label))
             }
 
-            val instrCount = block.instrs.size
-            for ((i, instr) in block.instrs.withIndex()) {
-                val isTerminal = i == instrCount - 1 && isTerminalInstr(instr)
+            // Merge SSA instructions with preserved IR instructions (TryStart, TryEnd, etc.)
+            // preservedIrInstrs are in original order relative to SSA instruction positions
+            val mergedInstrs = mergeInstructions(block.instrs, block.preservedIrInstrs)
+
+            val instrCount = mergedInstrs.size
+            for ((i, item) in mergedInstrs.withIndex()) {
+                val isTerminal = item is SsaInstr && i == instrCount - 1 && isTerminalInstr(item)
 
                 // Insert phi-resolution moves before the terminal instruction
                 if (isTerminal) {
                     emitPhiMoves(block.id, result)
                 }
 
-                val irInstr = convertInstr(instr)
+                // Handle preserved IrInstr directly
+                if (item is IrInstr) {
+                    result.add(item)
+                    continue
+                }
+
+                // Convert SsaInstr to IrInstr
+                val irInstr = convertInstr(item as SsaInstr)
                 if (irInstr != null) {
                     result.add(irInstr)
                 }
             }
 
             // Fallthrough blocks: emit phi moves at end
-            if (block.instrs.isEmpty() || !isTerminalInstr(block.instrs.last())) {
+            val lastItem = mergedInstrs.lastOrNull()
+            val lastIsTerminal = lastItem is SsaInstr && isTerminalInstr(lastItem)
+            if (mergedInstrs.isEmpty() || !lastIsTerminal) {
                 emitPhiMoves(block.id, result)
             }
+        }
+
+        return result
+    }
+
+    /**
+     * Merge SSA instructions with preserved IR instructions.
+     * Preserved instructions are interleaved based on their SSA index (inserted before that SSA instruction).
+     */
+    private fun mergeInstructions(ssaInstrs: List<SsaInstr>, preservedIrInstrs: List<Pair<Int, IrInstr>>): List<Any> {
+        if (preservedIrInstrs.isEmpty()) {
+            return ssaInstrs
+        }
+
+        val result = mutableListOf<Any>()
+        var nextPreservedIdx = 0
+        val sortedPreserved = preservedIrInstrs.sortedBy { it.first }  // Sort by SSA index
+
+        for ((ssaIdx, ssaInstr) in ssaInstrs.withIndex()) {
+            // Emit all preserved instructions that come before this SSA instruction
+            while (nextPreservedIdx < sortedPreserved.size && sortedPreserved[nextPreservedIdx].first == ssaIdx) {
+                result.add(sortedPreserved[nextPreservedIdx].second)
+                nextPreservedIdx++
+            }
+            result.add(ssaInstr)
+        }
+
+        // Emit any remaining preserved instructions (those that should come after all SSA instructions)
+        while (nextPreservedIdx < sortedPreserved.size) {
+            result.add(sortedPreserved[nextPreservedIdx].second)
+            nextPreservedIdx++
         }
 
         return result

@@ -15,6 +15,8 @@ open class AstLowerer {
     protected var breakLabel: IrLabel? = null
     protected var nextLabel: IrLabel? = null
     protected var lambdaCounter = 0
+    protected var capturedVars: MutableMap<String, Int> = mutableMapOf()  // varName -> upvalueIndex
+    protected var enclosingLocals: Map<String, Int> = emptyMap()  // snapshot of enclosing scope
     // Field names for class methods - used to resolve bare identifiers to self.fieldName
     protected open var fieldNames: Set<String> = emptySet()
 
@@ -477,6 +479,13 @@ open class AstLowerer {
                 // Field access: self.fieldName
                 emit(IrInstr.GetField(dst, 0, expr.name.lexeme))
                 dst
+            } else if (expr.name.lexeme in enclosingLocals) {
+                // Captured from enclosing scope!
+                val upvalueIndex = capturedVars.getOrPut(expr.name.lexeme) {
+                    capturedVars.size
+                }
+                emit(IrInstr.GetUpvalue(dst, upvalueIndex))
+                dst
             } else {
                 emit(LoadGlobal(dst, expr.name.lexeme))
                 dst
@@ -732,12 +741,26 @@ open class AstLowerer {
         }
         is Expr.LambdaExpr -> {
             val lambdaName = "__lambda_${lambdaCounter++}"
+
+            // Snapshot current scope for capture detection
+            val enclosing = locals.toMap()
+            val captured = mutableMapOf<String, Int>()
+
             val lowerer = AstLowerer()
+            lowerer.enclosingLocals = enclosing
+            lowerer.capturedVars = captured
+            lowerer.fieldNames = fieldNames
+
             for ((i, param) in expr.params.withIndex()) {
                 lowerer.locals[param.name.lexeme] = i
             }
             lowerer.regCounter = expr.params.size
+
             val result = lowerer.lower(expr.body.stmts)
+
+            // Build captured variable names and source registers
+            val capturedNames = captured.keys.toList()
+            val upvalueSrcRegs = captured.values.toList()
 
             val defaultValues = expr.params.map { param ->
                 param.defaultValue?.let { defaultValue ->
@@ -749,7 +772,7 @@ open class AstLowerer {
                 }
             }
 
-            emit(IrInstr.LoadFunc(dst, lambdaName, expr.params.size, result.instrs, result.constants, defaultValues))
+            emit(IrInstr.LoadFunc(dst, lambdaName, expr.params.size, result.instrs, result.constants, defaultValues, capturedNames, upvalueSrcRegs))
             dst
         }
         is Expr.ListExpr -> {

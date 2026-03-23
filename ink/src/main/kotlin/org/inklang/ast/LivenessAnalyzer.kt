@@ -107,6 +107,7 @@ class LivenessAnalyzer {
                     use(instr.obj, idx)
                 }
                 is IrInstr.LoadClass -> define(instr.dst, idx)
+                is IrInstr.GetUpvalue -> define(instr.dst, idx)
                 is IrInstr.Spill   -> use(instr.src, idx)
                 is IrInstr.Unspill -> define(instr.dst, idx)
                 is IrInstr.Throw -> use(instr.src, idx)

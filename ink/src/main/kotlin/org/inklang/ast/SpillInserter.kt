@@ -117,6 +117,7 @@ class SpillInserter {
                 is IrInstr.Throw -> instr
                 is IrInstr.RegisterEventHandler,
                 is IrInstr.InvokeEventHandler -> instr
+                is IrInstr.GetUpvalue -> instr
             }
 
             result.addAll(preInstrs)

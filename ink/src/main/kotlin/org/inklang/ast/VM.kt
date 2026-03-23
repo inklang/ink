@@ -94,6 +94,7 @@ class VM {
         val argBuffer: ArrayDeque<Value> = ArrayDeque()  // Staging buffer for PUSH_ARG
     ) {
         val spills: Array<Value?> = arrayOfNulls(chunk.spillSlotCount)
+        val upvalues: Array<Value?> = arrayOfNulls(16)  // captured values for closures
     }
 
     fun execute(chunk: Chunk) {
@@ -266,6 +267,9 @@ class VM {
                         }
                         else -> error("Cannot get field on ${obj::class.simpleName}")
                     }
+                }
+                OpCode.GET_UPVALUE -> {
+                    frame.regs[dst] = frame.upvalues[imm] ?: error("Upvalue at index $imm is not set")
                 }
                 OpCode.SET_FIELD -> {
                     val obj = frame.regs[src1] as? Value.Instance

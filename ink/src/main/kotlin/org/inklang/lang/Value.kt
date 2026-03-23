@@ -46,7 +46,8 @@ sealed class Value {
     data class Function(
         val chunk: Chunk,
         val arity: kotlin.Int = 0,  // Number of required parameters (without defaults)
-        val defaults: FunctionDefaults? = null  // Default value chunk indices
+        val defaults: FunctionDefaults? = null,  // Default value chunk indices
+        val upvalues: List<Value> = emptyList()  // captured values
     ) : Value()
     data class NativeFunction(val fn: (kotlin.collections.List<Value>) -> Value) : Value()
 

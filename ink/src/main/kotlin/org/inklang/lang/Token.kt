@@ -41,6 +41,10 @@ enum class TokenType {
     KW_ENABLE,    // enable keyword
     KW_DISABLE,   // disable keyword
     KW_EVENT,
+    KW_ASYNC,
+    KW_AWAIT,
+    KW_SPAWN,
+    KW_VIRTUAL,
     IDENTIFIER,
     PLUS,
     MINUS,

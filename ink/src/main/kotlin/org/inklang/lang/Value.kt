@@ -115,6 +115,9 @@ sealed class Value {
         val name: kotlin.String,
         val params: List<Pair<kotlin.String, kotlin.String>>  // param name to type
     ) : Value()
+
+    /** A handle to an in-progress async operation */
+    data class Task(val deferred: java.util.concurrent.CompletableFuture<Value>) : Value()
 }
 
 // === String method helpers ===

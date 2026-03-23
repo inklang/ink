@@ -53,6 +53,12 @@ sealed class IrInstr {
         val eventObjectReg: Int,
         val dataArgRegs: List<Int>
     ) : IrInstr()
+    // Await a task - suspend until complete, store result in dst
+    data class AwaitInstr(val dst: Int, val task: Int) : IrInstr()
+    // Spawn a function on a thread pool - store Task in dst
+    data class SpawnInstr(val dst: Int, val func: Int, val args: List<Int>, val virtual: Boolean) : IrInstr()
+    // Async call - launch async function, store Task in dst
+    data class AsyncCallInstr(val dst: Int, val func: Int, val args: List<Int>) : IrInstr()
 }
 
 data class MethodInfo(

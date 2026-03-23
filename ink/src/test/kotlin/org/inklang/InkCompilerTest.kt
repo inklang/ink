@@ -347,4 +347,156 @@ class InkCompilerTest {
         script.execute(context)
         assertEquals(listOf("50", "15"), context.prints)
     }
+
+    @Test
+    fun `compile and execute async function call`() {
+        val compiler = InkCompiler()
+        val source = """
+            async fn getValue() {
+                return 42;
+            }
+            let task = getValue();
+            print("got task");
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("got task"), context.prints)
+    }
+
+    @Test
+    fun `compile and execute spawn`() {
+        val compiler = InkCompiler()
+        // Note: spawn currently prints to stdout, not context
+        // This test just verifies spawn doesn't crash
+        val source = """
+            fn simple() {
+                print("simple spawn");
+            }
+            spawn simple();
+            print("done");
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        // Just verify "done" was printed to context
+        assertTrue(context.prints.contains("done"), "Expected 'done', got: ${context.prints}")
+    }
+
+    @Test
+    fun `compile and execute async function with await`() {
+        val compiler = InkCompiler()
+        val source = """
+            async fn getValue() {
+                return 42;
+            }
+            let task = getValue();
+            let result = await task;
+            print(result);
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("42"), context.prints)
+    }
+
+    @Test
+    fun `compile and execute spawn virtual`() {
+        val compiler = InkCompiler()
+        val source = """
+            fn work() {
+                return 99;
+            }
+            let task = spawn virtual work();
+            let result = await task;
+            print(result);
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("99"), context.prints)
+    }
+
+    @Test
+    fun `async function with arithmetic`() {
+        val compiler = InkCompiler()
+        val source = """
+            async fn compute() {
+                let x = 10 + 5;
+                let y = x * 2;
+                return y;
+            }
+            let task = compute();
+            let result = await task;
+            print(result);
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("30"), context.prints)
+    }
+
+    @Test
+    fun `multiple async tasks spawned sequentially`() {
+        val compiler = InkCompiler()
+        val source = """
+            async fn task1() { return 1; }
+            async fn task2() { return 2; }
+            let t1 = task1();
+            let t2 = task2();
+            let r1 = await t1;
+            let r2 = await t2;
+            print(r1);
+            print(r2);
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("1", "2"), context.prints)
+    }
+
+    @Test
+    fun `async function calling another async function`() {
+        val compiler = InkCompiler()
+        val source = """
+            async fn inner() {
+                return 100;
+            }
+            async fn outer() {
+                let x = await inner();
+                return x + 50;
+            }
+            let task = outer();
+            let result = await task;
+            print(result);
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("150"), context.prints)
+    }
+
+    @Test
+    fun `async function with conditional logic`() {
+        val compiler = InkCompiler()
+        val source = """
+            async fn getValue(flag) {
+                if (flag) {
+                    return 42;
+                } else {
+                    return 99;
+                }
+            }
+            let t1 = getValue(true);
+            let t2 = getValue(false);
+            let r1 = await t1;
+            let r2 = await t2;
+            print(r1);
+            print(r2);
+        """.trimIndent()
+        val script = compiler.compile(source, "test")
+        val context = FakeInkContext()
+        script.execute(context)
+        assertEquals(listOf("42", "99"), context.prints)
+    }
 }

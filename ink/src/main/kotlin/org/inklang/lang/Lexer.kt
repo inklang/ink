@@ -60,7 +60,11 @@ private class Lexer(val source: String) {
             "on" to TokenType.KW_ON,
             "event" to TokenType.KW_EVENT,
             "enable" to TokenType.KW_ENABLE,
-            "disable" to TokenType.KW_DISABLE
+            "disable" to TokenType.KW_DISABLE,
+            "async" to TokenType.KW_ASYNC,
+            "await" to TokenType.KW_AWAIT,
+            "spawn" to TokenType.KW_SPAWN,
+            "virtual" to TokenType.KW_VIRTUAL
         )
     }
 

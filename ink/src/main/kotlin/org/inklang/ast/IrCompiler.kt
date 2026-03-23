@@ -243,6 +243,24 @@ class IrCompiler {
                 is IrInstr.Throw -> chunk.write(OpCode.THROW, src1 = instr.src)
                 is IrInstr.RegisterEventHandler -> { /* registered at runtime, no bytecode */ }
                 is IrInstr.InvokeEventHandler -> { /* invoked at runtime, no bytecode */ }
+                is IrInstr.AwaitInstr -> {
+                    chunk.write(OpCode.AWAIT, dst = instr.dst, src1 = instr.task)
+                }
+                is IrInstr.SpawnInstr -> {
+                    // Push all arguments first
+                    for (arg in instr.args) {
+                        chunk.write(OpCode.PUSH_ARG, src1 = arg)
+                    }
+                    val opcode = if (instr.virtual) OpCode.SPAWN_VIRTUAL else OpCode.SPAWN
+                    chunk.write(opcode, dst = instr.dst, src1 = instr.func, imm = instr.args.size)
+                }
+                is IrInstr.AsyncCallInstr -> {
+                    // Push all arguments first
+                    for (arg in instr.args) {
+                        chunk.write(OpCode.PUSH_ARG, src1 = arg)
+                    }
+                    chunk.write(OpCode.ASYNC_CALL, dst = instr.dst, src1 = instr.func, imm = instr.args.size)
+                }
             }
         }
 

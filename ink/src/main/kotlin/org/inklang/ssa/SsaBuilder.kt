@@ -239,6 +239,9 @@ class SsaBuilder(
         is IrInstr.RegisterEventHandler -> null
         is IrInstr.InvokeEventHandler -> null
         is IrInstr.GetUpvalue -> SsaInstr.Move(SsaValue(instr.dst, 0), SsaValue(0, 0))  // dst defined, no src register
+        is IrInstr.AwaitInstr -> null  // implemented in VM
+        is IrInstr.SpawnInstr -> null  // implemented in VM
+        is IrInstr.AsyncCallInstr -> null  // implemented in VM
     }
 
     /**

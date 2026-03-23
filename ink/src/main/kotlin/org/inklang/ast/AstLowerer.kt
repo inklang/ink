@@ -19,6 +19,8 @@ open class AstLowerer {
     protected var enclosingLocals: Map<String, Int> = emptyMap()  // snapshot of enclosing scope
     // Field names for class methods - used to resolve bare identifiers to self.fieldName
     protected open var fieldNames: Set<String> = emptySet()
+    // Track which functions are async (name -> true)
+    protected val asyncFunctions = mutableSetOf<String>()
 
     private fun freshReg(): Int = regCounter++
     private fun freshLabel(): IrLabel = IrLabel(labelCounter++)
@@ -376,6 +378,9 @@ open class AstLowerer {
 
         val dst = freshReg()
         locals[stmt.name.lexeme] = dst
+        if (stmt.isAsync) {
+            asyncFunctions.add(stmt.name.lexeme)
+        }
         emit(IrInstr.LoadFunc(dst, stmt.name.lexeme, stmt.params.size, result.instrs, result.constants, defaultValues))
         // Also store in globals so other functions can call it
         emit(IrInstr.StoreGlobal(stmt.name.lexeme, dst))
@@ -649,11 +654,16 @@ open class AstLowerer {
             }
         }
         is Expr.CallExpr -> {
-            // Regular function/method/constructor call
-            // The VM handles Value.Class by creating a new instance
+            // Check if this is a call to an async function
+            val isAsyncCall = expr.callee is Expr.VariableExpr &&
+                              expr.callee.name.lexeme in asyncFunctions
             val funcReg = lowerExpr(expr.callee, freshReg())
             val argRegs = expr.arguments.map { lowerExpr(it, freshReg()) }
-            emit(Call(dst, funcReg, argRegs))
+            if (isAsyncCall) {
+                emit(AsyncCallInstr(dst, funcReg, argRegs))
+            } else {
+                emit(Call(dst, funcReg, argRegs))
+            }
             dst
         }
         is Expr.GroupExpr -> lowerExpr(expr.expr, dst)
@@ -820,6 +830,21 @@ open class AstLowerer {
             emit(IrInstr.Label(elseLabel))
             lowerExpr(expr.elseBranch, dst)
             emit(IrInstr.Label(endLabel))
+            dst
+        }
+        is Expr.AwaitExpr -> {
+            // await expr - lower to AwaitInstr
+            val taskReg = lowerExpr(expr.expr, freshReg())
+            emit(IrInstr.AwaitInstr(dst, taskReg))
+            dst
+        }
+        is Expr.SpawnExpr -> {
+            // spawn [virtual] expr - expr is a CallExpr to spawn
+            val callExpr = expr.expr as? Expr.CallExpr
+                ?: error("spawn requires a call expression")
+            val funcReg = lowerExpr(callExpr.callee, freshReg())
+            val argRegs = callExpr.arguments.map { lowerExpr(it, freshReg()) }
+            emit(IrInstr.SpawnInstr(dst, funcReg, argRegs, expr.virtual))
             dst
         }
         is Expr.ThrowExpr -> {

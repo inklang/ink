@@ -113,6 +113,18 @@ class LivenessAnalyzer {
                 is IrInstr.Throw -> use(instr.src, idx)
                 is IrInstr.RegisterEventHandler -> { /* no register effects */ }
                 is IrInstr.InvokeEventHandler -> { /* no register effects */ }
+                is IrInstr.AwaitInstr -> {
+                    define(instr.dst, idx)
+                    use(instr.task, idx)
+                }
+                is IrInstr.SpawnInstr -> {
+                    define(instr.dst, idx)
+                    use(instr.func, idx)
+                }
+                is IrInstr.AsyncCallInstr -> {
+                    define(instr.dst, idx)
+                    use(instr.func, idx)
+                }
             }
         }
 

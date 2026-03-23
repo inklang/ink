@@ -121,6 +121,7 @@ class SpillInserter {
                 is IrInstr.AwaitInstr,
                 is IrInstr.SpawnInstr,
                 is IrInstr.AsyncCallInstr -> instr
+                is IrInstr.CallHandler -> instr
             }
 
             result.addAll(preInstrs)

@@ -15,7 +15,9 @@ sealed class IrInstr {
         val arity: Int,
         val instrs: List<IrInstr>,
         val constants: List<Value>,
-        val defaultValues: List<DefaultValueInfo?> = emptyList()  // Default value IR for each param
+        val defaultValues: List<DefaultValueInfo?> = emptyList(),  // Default value IR for each param
+        val capturedVars: List<String> = emptyList(),  // Names of captured variables (closures)
+        val upvalueRegs: List<Int> = emptyList()  // Register indices of captured variables in enclosing scope
     ) : IrInstr()
     data class Call(val dst: Int, val func: Int, val args: List<Int>) : IrInstr()
     data class Return(val src: Int) : IrInstr()
@@ -39,6 +41,7 @@ sealed class IrInstr {
     object Next : IrInstr()
     data class Spill(val slot: Int, val src: Int) : IrInstr()    // spills[slot] = regs[src]
     data class Unspill(val dst: Int, val slot: Int) : IrInstr()  // regs[dst] = spills[slot]
+    data class GetUpvalue(val dst: Int, val upvalueIndex: Int) : IrInstr()  // Load captured variable
     // Register an event handler with the runtime event bus
     data class RegisterEventHandler(
         val eventName: String,
@@ -59,6 +62,7 @@ sealed class IrInstr {
     data class SpawnInstr(val dst: Int, val func: Int, val args: List<Int>, val virtual: Boolean) : IrInstr()
     // Async call - launch async function, store Task in dst
     data class AsyncCallInstr(val dst: Int, val func: Int, val args: List<Int>) : IrInstr()
+    data class CallHandler(val handlerName: String, val cst: org.inklang.grammar.CstNode) : IrInstr()
 }
 
 data class MethodInfo(

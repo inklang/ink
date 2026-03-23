@@ -614,6 +614,13 @@ class ContextVM(
                         }
                         frame.regs[dst] = Value.Null
                     }
+                    OpCode.GET_UPVALUE -> {
+                        frame.regs[dst] = frame.upvalues[imm] ?: throw ScriptException("Upvalue at index $imm is not set")
+                    }
+                    OpCode.CALL_HANDLER -> {
+                        val cst = frame.chunk.cstTable[imm]
+                        // Stub: plugin handler dispatch not yet wired in ContextVM
+                    }
                 }
             } catch (e: ScriptException) {
                 throw e
@@ -1001,6 +1008,18 @@ class ContextVM(
                     }
                     OpCode.REGISTER_EVENT -> {
                         // Event handlers are registered at compile time - no-op at runtime
+                    }
+                    OpCode.ASYNC_CALL,
+                    OpCode.AWAIT,
+                    OpCode.SPAWN,
+                    OpCode.SPAWN_VIRTUAL -> {
+                        // Async opcodes not supported in executeHandler
+                    }
+                    OpCode.GET_UPVALUE -> {
+                        currentFrame.regs[dst] = currentFrame.upvalues?.get(imm) ?: throw ScriptException("Upvalue at index $imm is not set")
+                    }
+                    OpCode.CALL_HANDLER -> {
+                        // Plugin handler dispatch stub
                     }
                 }
             } catch (e: ScriptException) {

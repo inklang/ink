@@ -1,0 +1,9 @@
+{
+  "name": "ink.mobs",
+  "version": "1.0.0",
+  "grammar": "grammar.ir.json",
+  "runtime": {
+    "jar": "runtime.jar",
+    "entry": "org.ink.mobs.MobsRuntime"
+  }
+}

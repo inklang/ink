@@ -61,4 +61,6 @@ enum class OpCode(val code: Byte) {
     AWAIT(0x2D),       // dst = await task (suspends until complete)
     SPAWN(0x2E),       // spawn function on thread pool
     SPAWN_VIRTUAL(0x2F), // spawn function on virtual thread pool
+    GET_UPVALUE(0x30),   // dst = upvalue[imm] - load captured variable
+    CALL_HANDLER(0x31),  // dispatch plugin handler with CST data
 }

@@ -46,7 +46,10 @@ private fun unescape(s: String): String = buildString {
     }
 }
 
-class Parser(private val tokens: List<Token>) {
+class Parser(
+    private val tokens: List<Token>,
+    private val pluginRegistry: org.inklang.grammar.PluginParserRegistry? = null
+) {
     private var cursor = 0
 
     companion object {
@@ -246,9 +249,16 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KW_ENABLE) -> parseEnable()
             check(TokenType.KW_DISABLE) -> parseDisable()
             else -> {
-                val expr = parseExpression(0)
-                if (check(TokenType.SEMICOLON)) advance()
-                Stmt.ExprStmt(expr)
+                // Check for plugin declaration before falling through to expression
+                if (check(TokenType.IDENTIFIER) && pluginRegistry?.isPluginKeyword(peek().lexeme) == true) {
+                    val (cst, consumed) = pluginRegistry.parseDeclaration(tokens, cursor)
+                    cursor += consumed
+                    Stmt.PluginDeclStmt(cst.keyword, cst.name, cst)
+                } else {
+                    val expr = parseExpression(0)
+                    if (check(TokenType.SEMICOLON)) advance()
+                    Stmt.ExprStmt(expr)
+                }
             }
         }
     }

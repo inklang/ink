@@ -228,6 +228,9 @@ open class AstLowerer {
         }
         is Stmt.EnableStmt -> lowerBlock(stmt.block)
         is Stmt.DisableStmt -> lowerBlock(stmt.block)
+        is Stmt.PluginDeclStmt -> {
+            emit(IrInstr.CallHandler(stmt.keyword, stmt.cst))
+        }
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {

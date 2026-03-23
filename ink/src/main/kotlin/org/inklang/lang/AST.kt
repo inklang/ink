@@ -188,4 +188,10 @@ sealed class Stmt {
     data class EnableStmt(val block: BlockStmt) : Stmt()
     data class DisableStmt(val block: BlockStmt) : Stmt()
 
+    data class PluginDeclStmt(
+        val keyword: String,
+        val name: String,
+        val cst: org.inklang.grammar.CstNode.Declaration
+    ) : Stmt()
+
 }

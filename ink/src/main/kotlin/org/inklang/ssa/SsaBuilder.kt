@@ -242,6 +242,7 @@ class SsaBuilder(
         is IrInstr.AwaitInstr -> null  // implemented in VM
         is IrInstr.SpawnInstr -> null  // implemented in VM
         is IrInstr.AsyncCallInstr -> null  // implemented in VM
+        is IrInstr.CallHandler -> SsaInstr.CallHandler(instr.handlerName, instr.cst)
     }
 
     /**

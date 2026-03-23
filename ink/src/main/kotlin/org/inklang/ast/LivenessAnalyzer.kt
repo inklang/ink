@@ -125,6 +125,7 @@ class LivenessAnalyzer {
                     define(instr.dst, idx)
                     use(instr.func, idx)
                 }
+                is IrInstr.CallHandler -> {} // no registers used
             }
         }
 

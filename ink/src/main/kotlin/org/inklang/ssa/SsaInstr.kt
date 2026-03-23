@@ -160,6 +160,11 @@ sealed class SsaInstr {
         override val definedValue: SsaValue? = null
         override val usedValues: List<SsaValue> = emptyList()
     }
+
+    data class CallHandler(val handlerName: String, val cst: org.inklang.grammar.CstNode) : SsaInstr() {
+        override val definedValue: SsaValue? = null
+        override val usedValues: List<SsaValue> = emptyList()
+    }
 }
 
 /**

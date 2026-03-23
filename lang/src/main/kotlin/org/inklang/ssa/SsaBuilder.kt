@@ -236,6 +236,10 @@ class SsaBuilder(
         is IrInstr.Spill   -> null  // Not converted to SSA
         is IrInstr.Unspill -> null  // Not converted to SSA
         is IrInstr.CallHandler -> SsaInstr.CallHandler(instr.handlerName, instr.cst)
+        is IrInstr.TryStart,
+        is IrInstr.TryEnd,
+        is IrInstr.ThrowInstr,
+        is IrInstr.ExitTry -> null  // Not SSA-converted (handled specially)
     }
 
     /**

@@ -363,6 +363,19 @@ class VM {
                         ?: error("No handler registered for plugin keyword '$keyword'")
                     handler(cst)
                 }
+                OpCode.TRY_START -> {
+                    // Handler record pushed here - full implementation in Step 15
+                    // dst = finally label idx (0xF=none), imm = catch label idx (0xFFF=none)
+                }
+                OpCode.TRY_END -> {
+                    // Handler record popped - full implementation in Step 15
+                }
+                OpCode.THROW -> {
+                    // Throw propagation - full implementation in Step 15
+                }
+                OpCode.EXIT_TRY -> {
+                    // Exit try with return value - full implementation in Step 15
+                }
             }
         }
     }

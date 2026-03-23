@@ -110,6 +110,10 @@ class LivenessAnalyzer {
                 is IrInstr.Spill   -> use(instr.src, idx)
                 is IrInstr.Unspill -> define(instr.dst, idx)
                 is IrInstr.CallHandler -> {} // no registers used
+                is IrInstr.TryStart,
+                is IrInstr.TryEnd,
+                is IrInstr.ThrowInstr,
+                is IrInstr.ExitTry -> {} // no register activity (control-flow only)
             }
         }
 

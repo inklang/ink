@@ -528,6 +528,10 @@ class Parser(
                 consume(TokenType.R_SQUARE, "Expected ']'")
                 Expr.ListExpr(elements)
             }
+            TokenType.KW_THROW -> {
+                advance()
+                return Expr.ThrowExpr(parseExpression(0))
+            }
             else -> throw error(
                 token,
                 "Expected expression but found ${token.type} ('${token.lexeme}')"

@@ -28,6 +28,7 @@ class Chunk {
     val functionDefaults = mutableListOf<FunctionDefaults>()  // Parallel to functions - defaults for each function
     val cstTable = mutableListOf<org.inklang.grammar.CstNode>()  // CST nodes for plugin handler dispatch
     var spillSlotCount: Int = 0
+    val labelOffsets = mutableMapOf<Int, Int>()  // IrLabel.id -> bytecode offset
 
     fun addConstant(value: Value): Int {
         constants.add(value)

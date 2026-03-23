@@ -314,6 +314,91 @@ class VMTest {
         assertEquals(2, importStmt.tokens.size)
     }
 
+    // try/catch/finally parsing tests
+    @Test
+    fun testTryCatchParsing() {
+        val tokens = tokenize("""
+            try {
+                throw "error"
+            } catch e {
+                print(e)
+            }
+        """.trimIndent())
+        val stmts = Parser(tokens).parse()
+        assertEquals(1, stmts.size)
+        assertTrue(stmts[0] is Stmt.TryCatchStmt)
+        val tryCatch = stmts[0] as Stmt.TryCatchStmt
+        assertTrue(tryCatch.body.stmts.size >= 1)  // throw statement
+        assertTrue(tryCatch.catchBody != null)
+        assertTrue(tryCatch.catchVar?.lexeme == "e")
+        assertTrue(tryCatch.finallyBody == null)
+    }
+
+    @Test
+    fun testTryFinallyParsing() {
+        val tokens = tokenize("""
+            try {
+                risky()
+            } finally {
+                cleanup()
+            }
+        """.trimIndent())
+        val stmts = Parser(tokens).parse()
+        assertEquals(1, stmts.size)
+        assertTrue(stmts[0] is Stmt.TryCatchStmt)
+        val tryCatch = stmts[0] as Stmt.TryCatchStmt
+        assertTrue(tryCatch.catchBody == null)
+        assertTrue(tryCatch.finallyBody != null)
+    }
+
+    @Test
+    fun testThrowExpressionParsing() {
+        val tokens = tokenize("throw 42")
+        val stmts = Parser(tokens).parse()
+        assertEquals(1, stmts.size)
+        assertTrue(stmts[0] is Stmt.ExprStmt)
+        val expr = (stmts[0] as Stmt.ExprStmt).expr
+        assertTrue(expr is Expr.ThrowExpr)
+    }
+
+    @Test
+    fun testThrowInIfParsing() {
+        val tokens = tokenize("if x { throw 42 } else { ok() }")
+        val stmts = Parser(tokens).parse()
+        // verify it parses without error
+        assertEquals(1, stmts.size)
+    }
+
+    @Test
+    fun testTryCatchFinallyParsing() {
+        val tokens = tokenize("""
+            try {
+                risky()
+            } catch e {
+                handle(e)
+            } finally {
+                cleanup()
+            }
+        """.trimIndent())
+        val stmts = Parser(tokens).parse()
+        assertEquals(1, stmts.size)
+        assertTrue(stmts[0] is Stmt.TryCatchStmt)
+        val tryCatch = stmts[0] as Stmt.TryCatchStmt
+        assertTrue(tryCatch.catchBody != null)
+        assertTrue(tryCatch.finallyBody != null)
+    }
+
+    @Test
+    fun testTryWithoutCatchOrFinallyError() {
+        val tokens = tokenize("try { risky() }")
+        try {
+            Parser(tokens).parse()
+            assertTrue(false, "Should have thrown")
+        } catch (e: RuntimeException) {
+            assertTrue(e.message?.contains("catch or finally") == true)
+        }
+    }
+
     // Integration tests
     @Ignore("SSA round-trip bug with control flow")
     @Test

@@ -317,6 +317,7 @@ class SsaDeconstructor(private val ssaFunc: SsaFunction) {
         }
         is SsaInstr.Break -> IrInstr.Break
         is SsaInstr.Next -> IrInstr.Next
+        is SsaInstr.CallHandler -> IrInstr.CallHandler(instr.handlerName, instr.cst)
     }
 
     /**

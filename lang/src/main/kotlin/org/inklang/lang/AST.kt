@@ -131,4 +131,10 @@ sealed class Stmt {
         val finallyBody: BlockStmt?
     ) : Stmt()
 
+    data class PluginDeclStmt(
+        val keyword: String,
+        val name: String,
+        val cst: org.inklang.grammar.CstNode.Declaration
+    ) : Stmt()
+
 }

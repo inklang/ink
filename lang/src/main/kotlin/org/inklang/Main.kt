@@ -6,6 +6,8 @@ import org.inklang.ast.LivenessAnalyzer
 import org.inklang.ast.RegisterAllocator
 import org.inklang.ast.SpillInserter
 import org.inklang.lang.IrCompiler
+import org.inklang.grammar.PackageRegistry
+import org.inklang.grammar.PluginParserRegistry
 import org.inklang.lang.Parser
 import org.inklang.lang.VM
 import org.inklang.lang.Value
@@ -20,8 +22,16 @@ fun main(args: Array<String>) {
     print(tokens)
     println("Tokens: ${tokens.size}")
 
+    // Load plugin grammars if a plugins directory is provided
+    val pluginRegistry = if (args.size > 1) {
+        val pluginsDir = File(args[1])
+        val pkgRegistry = PackageRegistry()
+        pkgRegistry.loadAll(pluginsDir)
+        PluginParserRegistry(pkgRegistry.merge())
+    } else null
+
     println("\n=== Parsing ===")
-    val parser = Parser(tokens)
+    val parser = Parser(tokens, pluginRegistry)
     val statements = parser.parse()
     println("Statements: ${statements.size}")
     for (stmt in statements) {

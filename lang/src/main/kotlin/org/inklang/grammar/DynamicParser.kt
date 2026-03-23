@@ -53,6 +53,14 @@ class DynamicParser(private val grammar: GrammarPackage) {
         return results
     }
 
+    /**
+     * Parse a single declaration from a pre-built token stream.
+     * Used by PluginParserRegistry to parse from the base parser's bridged tokens.
+     */
+    fun parseOneDeclaration(tokens: TokenStream): CstNode.Declaration {
+        return parseDeclaration(tokens) as CstNode.Declaration
+    }
+
     private fun parseDeclaration(tokens: TokenStream): CstNode {
         val tok = tokens.peek()
         val decl = declByKeyword[tok.text]

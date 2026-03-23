@@ -21,6 +21,8 @@ fun valueToString(v: Value): String = when (v) {
 }
 
 class VM {
+    val handlers = mutableMapOf<String, (org.inklang.grammar.CstNode) -> Unit>()
+
     // Pre-created instances for stdlib - must be initialized before globals
     private val mathInstance = Builtins.newMath()
     private val randomInstance = Builtins.newRandom()
@@ -354,6 +356,13 @@ class VM {
                 }
                 OpCode.SPILL   -> frame.spills[imm] = frame.regs[src1]
                 OpCode.UNSPILL -> frame.regs[dst] = frame.spills[imm]!!
+                OpCode.CALL_HANDLER -> {
+                    val cst = frame.chunk.cstTable[imm]
+                    val keyword = (cst as org.inklang.grammar.CstNode.Declaration).keyword
+                    val handler = handlers[keyword]
+                        ?: error("No handler registered for plugin keyword '$keyword'")
+                    handler(cst)
+                }
             }
         }
     }

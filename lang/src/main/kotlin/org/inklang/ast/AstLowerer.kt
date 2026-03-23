@@ -115,6 +115,9 @@ class AstLowerer {
             // TODO: implement try-catch lowering
             lowerBlock(stmt.body)
         }
+        is Stmt.PluginDeclStmt -> {
+            emit(IrInstr.CallHandler(stmt.keyword, stmt.cst))
+        }
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {

@@ -1,6 +1,16 @@
 package org.inklang.grammar
 
 import kotlinx.serialization.json.Json
+import org.inklang.ast.AstLowerer
+import org.inklang.ast.ConstantFolder
+import org.inklang.ast.LivenessAnalyzer
+import org.inklang.ast.RegisterAllocator
+import org.inklang.ast.SpillInserter
+import org.inklang.lang.IrCompiler
+import org.inklang.lang.Parser
+import org.inklang.lang.Stmt
+import org.inklang.lang.VM
+import org.inklang.lang.tokenize
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.File
@@ -256,6 +266,120 @@ class GrammarIRTest {
 
         val spawnMatch = decl.body[0] as CstNode.RuleMatch
         assertEquals("ink.test/spawn_clause", spawnMatch.ruleName)
+    }
+
+    // --- Base Parser integration tests ---
+
+    private fun buildPluginRegistry(vararg fixtureNames: String): PluginParserRegistry {
+        val registry = PackageRegistry()
+        registry.loadAll(fixturesParent())
+        return PluginParserRegistry(registry.merge())
+    }
+
+    @Test
+    fun `base parser delegates mob declaration to plugin parser`() {
+        val pluginRegistry = buildPluginRegistry("ink.mobs")
+        val source = "mob Dragon {\n    on_spawn {\n    }\n}"
+        val tokens = tokenize(source)
+        val parser = Parser(tokens, pluginRegistry)
+        val stmts = parser.parse()
+
+        assertEquals(1, stmts.size)
+        val pluginDecl = stmts[0] as Stmt.PluginDeclStmt
+        assertEquals("mob", pluginDecl.keyword)
+        assertEquals("Dragon", pluginDecl.name)
+        assertEquals(1, pluginDecl.cst.body.size)
+
+        val scopeMatch = pluginDecl.cst.body[0] as CstNode.RuleMatch
+        assertEquals("ink.mobs/on_spawn_clause", scopeMatch.ruleName)
+    }
+
+    @Test
+    fun `base parser handles mixed base and plugin statements`() {
+        val pluginRegistry = buildPluginRegistry("ink.mobs")
+        val source = """
+            let x = 42
+            mob Dragon {
+                on_spawn { }
+            }
+            let y = x
+        """.trimIndent()
+        val tokens = tokenize(source)
+        val parser = Parser(tokens, pluginRegistry)
+        val stmts = parser.parse()
+
+        assertEquals(3, stmts.size)
+        assertTrue(stmts[0] is Stmt.VarStmt)
+        assertTrue(stmts[1] is Stmt.PluginDeclStmt)
+        assertTrue(stmts[2] is Stmt.VarStmt)
+        assertEquals("Dragon", (stmts[1] as Stmt.PluginDeclStmt).name)
+    }
+
+    @Test
+    fun `base parser without plugin registry ignores mob as identifier`() {
+        // Without a plugin registry, "mob" is just an identifier
+        val source = "let mob = 1"
+        val tokens = tokenize(source)
+        val parser = Parser(tokens)
+        val stmts = parser.parse()
+
+        assertEquals(1, stmts.size)
+        assertTrue(stmts[0] is Stmt.VarStmt)
+    }
+
+    // --- End-to-end integration test ---
+
+    @Test
+    fun `end-to-end - load grammar, parse, compile, execute, handler called with CST`() {
+        // 1. Load ink.mobs grammar
+        val pluginRegistry = buildPluginRegistry("ink.mobs")
+
+        // 2. Parse source with plugin keywords
+        val source = "mob Dragon {\n    on_spawn {\n    }\n}"
+        val tokens = tokenize(source)
+        val parser = Parser(tokens, pluginRegistry)
+        val stmts = parser.parse()
+
+        // 3. Lower AST to IR
+        val folder = ConstantFolder()
+        val folded = stmts.map { folder.foldStmt(it) }
+        val result = AstLowerer().lower(folded)
+
+        // 4. SSA round-trip (this is where CallHandler was previously dropped)
+        val (ssaInstrs, ssaConstants) = IrCompiler.optimizedSsaRoundTrip(result.instrs, result.constants)
+        val ssaResult = AstLowerer.LoweredResult(ssaInstrs, ssaConstants)
+
+        // 5. Register allocation + spill insertion
+        val ranges = LivenessAnalyzer().analyze(ssaResult.instrs)
+        val allocResult = RegisterAllocator().allocate(ranges)
+        val resolved = SpillInserter().insert(ssaResult.instrs, allocResult, ranges)
+
+        // 6. Compile to bytecode
+        val chunk = IrCompiler().compile(AstLowerer.LoweredResult(resolved, ssaResult.constants))
+        chunk.spillSlotCount = allocResult.spillSlotCount
+
+        // 7. Execute with handler registered
+        val vm = VM()
+        var handlerCalled = false
+        var receivedCst: CstNode? = null
+
+        vm.handlers["mob"] = { cst ->
+            handlerCalled = true
+            receivedCst = cst
+        }
+
+        vm.execute(chunk)
+
+        // 8. Assert handler was called with correct CST
+        assertTrue(handlerCalled, "Handler for 'mob' should have been called")
+        assertNotNull(receivedCst)
+        val decl = receivedCst as CstNode.Declaration
+        assertEquals("mob", decl.keyword)
+        assertEquals("Dragon", decl.name)
+        assertEquals(1, decl.body.size)
+
+        val scopeMatch = decl.body[0] as CstNode.RuleMatch
+        assertEquals("ink.mobs/on_spawn_clause", scopeMatch.ruleName)
     }
 
     @Test

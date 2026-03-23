@@ -132,5 +132,6 @@ class SsaFunction(
         is SsaInstr.LoadClass -> "${instr.definedValue} = LoadClass ${instr.name}"
         is SsaInstr.Break -> "Break"
         is SsaInstr.Next -> "Next"
+        is SsaInstr.CallHandler -> "CallHandler ${instr.handlerName}"
     }
 }

@@ -219,6 +219,7 @@ class SsaRenamer(
             }
             is SsaInstr.Break -> instr
             is SsaInstr.Next -> instr
+            is SsaInstr.CallHandler -> instr
         }
     }
 

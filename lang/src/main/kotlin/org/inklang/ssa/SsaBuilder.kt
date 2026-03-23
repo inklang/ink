@@ -235,6 +235,7 @@ class SsaBuilder(
         is IrInstr.Next -> SsaInstr.Next
         is IrInstr.Spill   -> null  // Not converted to SSA
         is IrInstr.Unspill -> null  // Not converted to SSA
+        is IrInstr.CallHandler -> SsaInstr.CallHandler(instr.handlerName, instr.cst)
     }
 
     /**

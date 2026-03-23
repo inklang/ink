@@ -39,6 +39,10 @@ sealed class IrInstr {
     data class Spill(val slot: Int, val src: Int) : IrInstr()    // spills[slot] = regs[src]
     data class Unspill(val dst: Int, val slot: Int) : IrInstr()  // regs[dst] = spills[slot]
     data class CallHandler(val handlerName: String, val cst: org.inklang.grammar.CstNode) : IrInstr()
+    data class TryStart(val finallyLabelIdx: Int?, val catchLabelIdx: Int?) : IrInstr()
+    object TryEnd : IrInstr()
+    data class ThrowInstr(val src: Int) : IrInstr()
+    data class ExitTry(val returnDst: Int) : IrInstr()
 }
 
 data class MethodInfo(

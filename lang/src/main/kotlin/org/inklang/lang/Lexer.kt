@@ -122,11 +122,7 @@ private class Lexer(val source: String) {
 
                 ' ', '\r', '\t' -> {}
                 '\n' -> {
-                    // Automatic Semicolon Insertion (ASI)
-                    // Insert semicolon if previous token could end a statement
-                    if (tokens.isNotEmpty() && tokens.last().type in STATEMENT_ENDERS) {
-                        addToken(TokenType.SEMICOLON)
-                    }
+                    // Ink doesn't use ASI - just track line number
                     line++
                     column = 0
                 }
@@ -186,11 +182,11 @@ private class Lexer(val source: String) {
             return
         }
 
-        // Closing quote
+        // Closing quote found - consume it
         advance()
 
-        // Trim the surrounding quotes
-        val value = source.substring(start + 1, cursor - 1)
+        // Add token: lexeme is source from opening quote (start) to cursor - 1 (exclusive of closing quote)
+        // But addToken uses source.substring(start, cursor), so cursor must be AFTER closing quote
         addToken(TokenType.KW_STRING)
     }
 

@@ -529,7 +529,7 @@ class Parser(
                 Expr.ListExpr(elements)
             }
             TokenType.KW_THROW -> {
-                advance()
+                // Don't advance here - parseExpression will call parsePrefix which advances to the throw value
                 return Expr.ThrowExpr(parseExpression(0))
             }
             else -> throw error(

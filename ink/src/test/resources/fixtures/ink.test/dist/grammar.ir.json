@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "package": "ink.test",
+  "keywords": ["spawn", "entity"],
+  "rules": {
+    "ink.test/spawn_clause": {
+      "rule": {
+        "type": "seq",
+        "items": [
+          {"type": "keyword", "value": "spawn"},
+          {"type": "identifier"},
+          {"type": "block", "scope": null}
+        ]
+      }
+    }
+  },
+  "declarations": [
+    {
+      "keyword": "entity",
+      "nameRule": {"type": "identifier"},
+      "scopeRules": ["ink.test/spawn_clause"],
+      "inheritsBase": true
+    }
+  ]
+}

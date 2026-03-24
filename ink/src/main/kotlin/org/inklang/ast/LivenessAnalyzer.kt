@@ -112,6 +112,12 @@ class LivenessAnalyzer {
                 is IrInstr.Throw -> use(instr.src, idx)
                 is IrInstr.RegisterEventHandler -> { /* no register effects */ }
                 is IrInstr.InvokeEventHandler -> { /* no register effects */ }
+                is IrInstr.CallHandler -> { /* no register effects */ }
+                is IrInstr.TryStart -> { /* no register effects */ }
+                is IrInstr.TryEnd -> { /* no register effects */ }
+                is IrInstr.TryEndFinally -> { /* no register effects */ }
+                is IrInstr.ThrowInstr -> use(instr.src, idx)
+                is IrInstr.ExitTry -> { /* no register effects */ }
             }
         }
 

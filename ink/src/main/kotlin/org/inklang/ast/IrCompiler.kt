@@ -87,6 +87,7 @@ class IrCompiler {
                 offset++
             }
         }
+        chunk.labelOffsets.putAll(labelOffsets)
 
         // second pass: emit bytecode
         for (instr in result.instrs) {
@@ -237,6 +238,28 @@ class IrCompiler {
                 is IrInstr.Throw -> chunk.write(OpCode.THROW, src1 = instr.src)
                 is IrInstr.RegisterEventHandler -> { /* registered at runtime, no bytecode */ }
                 is IrInstr.InvokeEventHandler -> { /* invoked at runtime, no bytecode */ }
+                is IrInstr.CallHandler -> {
+                    val cstIdx = chunk.cstTable.size
+                    chunk.cstTable.add(instr.cst)
+                    chunk.write(OpCode.CALL_HANDLER, imm = cstIdx)
+                }
+                is IrInstr.TryStart -> {
+                    val finallyPc = instr.finallyLabelIdx?.let { labelOffsets[it] } ?: 0xF
+                    val catchPc = instr.catchLabelIdx?.let { labelOffsets[it] } ?: 0xFFF
+                    chunk.write(OpCode.TRY_START, dst = finallyPc, imm = catchPc)
+                }
+                is IrInstr.TryEnd -> {
+                    chunk.write(OpCode.TRY_END)
+                }
+                is IrInstr.TryEndFinally -> {
+                    chunk.write(OpCode.TRY_END_FINALLY, dst = labelOffsets[instr.finallyLabelIdx]!!)
+                }
+                is IrInstr.ThrowInstr -> {
+                    chunk.write(OpCode.THROW_INSTR, src1 = instr.src)
+                }
+                is IrInstr.ExitTry -> {
+                    chunk.write(OpCode.EXIT_TRY, imm = instr.returnDst)
+                }
             }
         }
 

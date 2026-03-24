@@ -117,6 +117,12 @@ class SpillInserter {
                 is IrInstr.Throw -> instr
                 is IrInstr.RegisterEventHandler,
                 is IrInstr.InvokeEventHandler -> instr
+                is IrInstr.CallHandler -> instr
+                is IrInstr.TryStart -> instr
+                is IrInstr.TryEnd -> instr
+                is IrInstr.TryEndFinally -> instr
+                is IrInstr.ThrowInstr -> instr
+                is IrInstr.ExitTry -> instr
             }
 
             result.addAll(preInstrs)

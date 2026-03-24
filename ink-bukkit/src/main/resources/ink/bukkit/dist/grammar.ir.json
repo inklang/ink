@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "package": "ink.bukkit",
+  "keywords": [
+    "mob",
+    "on_spawn", "on_death", "on_damage", "on_tick", "on_target", "on_interact",
+    "command",
+    "player",
+    "on_join", "on_leave", "on_chat"
+  ],
+  "rules": {
+    "ink.bukkit/on_spawn_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_spawn" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_death_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_death" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_damage_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_damage" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_tick_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_tick" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_target_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_target" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_interact_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_interact" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/command_clause": {
+      "rule": { "type": "block", "scope": null }
+    },
+    "ink.bukkit/player_clause": {
+      "rule": {
+        "type": "choice",
+        "items": [
+          { "type": "seq", "items": [{ "type": "keyword", "value": "on_join" }, { "type": "block", "scope": null }] },
+          { "type": "seq", "items": [{ "type": "keyword", "value": "on_leave" }, { "type": "block", "scope": null }] },
+          { "type": "seq", "items": [{ "type": "keyword", "value": "on_chat" }, { "type": "block", "scope": null }] }
+        ]
+      }
+    }
+  },
+  "declarations": [
+    {
+      "keyword": "mob",
+      "nameRule": { "type": "identifier" },
+      "scopeRules": [
+        "ink.bukkit/on_spawn_clause",
+        "ink.bukkit/on_death_clause",
+        "ink.bukkit/on_damage_clause",
+        "ink.bukkit/on_tick_clause",
+        "ink.bukkit/on_target_clause",
+        "ink.bukkit/on_interact_clause"
+      ],
+      "inheritsBase": true
+    },
+    {
+      "keyword": "command",
+      "nameRule": { "type": "identifier" },
+      "scopeRules": ["ink.bukkit/command_clause"],
+      "inheritsBase": true
+    },
+    {
+      "keyword": "player",
+      "nameRule": { "type": "identifier" },
+      "scopeRules": ["ink.bukkit/player_clause"],
+      "inheritsBase": true
+    }
+  ]
+}

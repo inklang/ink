@@ -3,9 +3,17 @@ package org.inklang.bukkit
 import org.inklang.InkCompiler
 import org.inklang.InkScript
 import org.inklang.ContextVM
+import org.inklang.inkScriptFromJson
+import org.inklang.bukkit.handlers.CommandHandler
+import org.inklang.bukkit.handlers.MobHandler
+import org.inklang.grammar.CstNode
+import org.inklang.lang.Chunk
 import org.inklang.lang.Value
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+
+/** Signature for a built-in grammar keyword handler. */
+typealias GrammarKeywordHandler = (cst: CstNode.Declaration, chunk: Chunk, vm: ContextVM, plugin: InkBukkit) -> Unit
 
 /**
  * Manages loaded plugins — lifecycle, event registration, state.
@@ -18,6 +26,12 @@ class PluginRuntime(
     private val compiler = InkCompiler()
     private val loadedPlugins = ConcurrentHashMap<String, LoadedPlugin>()
 
+    /** Built-in grammar keyword handlers, keyed by grammar declaration keyword. */
+    private val keywordHandlers: Map<String, GrammarKeywordHandler> = mapOf(
+        "mob" to MobHandler::handle,
+        "command" to CommandHandler::handle
+    )
+
     data class LoadedPlugin(
         val name: String,
         val script: InkScript,
@@ -25,12 +39,11 @@ class PluginRuntime(
         val disableScript: InkScript?,
         val context: PluginContext,
         val folder: File,
-        val vm: ContextVM  // Persistent per-plugin VM
+        val vm: ContextVM
     )
 
     /**
-     * Load and enable a plugin from its .ink file.
-     * Creates a persistent VM for the plugin.
+     * Load and enable a plugin from its .ink source file (JIT compilation).
      */
     fun loadPlugin(pluginFile: File): Result<LoadedPlugin> {
         val pluginName = pluginFile.nameWithoutExtension
@@ -42,7 +55,6 @@ class PluginRuntime(
         return try {
             val source = pluginFile.readText()
 
-            // Validate plugin has required enable/disable blocks
             val parsedStatements = compiler.parse(source)
             val validationResult = compiler.validatePluginScript(parsedStatements)
             if (!validationResult.isValid()) {
@@ -54,60 +66,7 @@ class PluginRuntime(
             }
 
             val script = compiler.compile(source, pluginName)
-
-            // Extract enable and disable blocks
-            // TODO: Extract enable/disable blocks from compiled script
-            // For now, we execute the full script for enable
-            val enableScript = script
-            val disableScript = script // TODO: Extract disable block
-
-            val pluginFolder = File(plugin.dataFolder, "plugins/$pluginName")
-            pluginFolder.mkdirs()
-
-            val ioDriver = BukkitIo(pluginFolder)
-            val jsonDriver = BukkitJson()
-            val dbDriver = BukkitDb(File(pluginFolder, "data.db").absolutePath)
-
-            val context = PluginContext(
-                plugin.server.consoleSender,
-                plugin,
-                ioDriver,
-                jsonDriver,
-                dbDriver,
-                pluginName,
-                pluginFolder
-            )
-
-            // Create the persistent VM for this plugin
-            val vm = ContextVM(context)
-
-            // Pre-load configs from YAML files
-            val preloadedConfigs = script.preloadConfigs(pluginFolder.absolutePath)
-            vm.setGlobals(preloadedConfigs)
-
-            // Add Paper/Bukkit globals (player, server, etc.)
-            val paperGlobals = PaperGlobals.getGlobals(plugin.server.consoleSender, plugin.server)
-            vm.setGlobals(paperGlobals)
-
-            // Give the context a reference to its VM
-            context.setVM(vm)
-
-            // Execute enable block in the persistent VM
-            vm.execute(enableScript.getChunk())
-
-            val loaded = LoadedPlugin(
-                name = pluginName,
-                script = script,
-                enableScript = enableScript,
-                disableScript = disableScript,
-                context = context,
-                folder = pluginFolder,
-                vm = vm
-            )
-
-            loadedPlugins[pluginName] = loaded
-            plugin.logger.info("Ink plugin loaded: $pluginName")
-            Result.success(loaded)
+            enableScript(pluginName, script)
         } catch (e: Exception) {
             plugin.logger.severe("Failed to load Ink plugin $pluginName: ${e.message}")
             Result.failure(e)
@@ -115,31 +74,100 @@ class PluginRuntime(
     }
 
     /**
-     * Unload a plugin (execute disable block in same VM, then discard VM).
+     * Load and enable a plugin from a precompiled .inkc file.
+     */
+    fun loadCompiledPlugin(inkcFile: File): Result<LoadedPlugin> {
+        val pluginName = inkcFile.nameWithoutExtension
+
+        if (globalConfig.isPluginDisabled(pluginName)) {
+            return Result.failure(PluginDisabledException("$pluginName is disabled in plugins.toml"))
+        }
+
+        return try {
+            val script = inkScriptFromJson(inkcFile.readText())
+            plugin.logger.info("Loading precompiled plugin: $pluginName")
+            enableScript(pluginName, script)
+        } catch (e: Exception) {
+            plugin.logger.severe("Failed to load compiled Ink plugin $pluginName: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    private fun enableScript(pluginName: String, script: InkScript): Result<LoadedPlugin> {
+        val pluginFolder = File(plugin.dataFolder, "plugins/$pluginName")
+        pluginFolder.mkdirs()
+
+        val ioDriver = BukkitIo(pluginFolder)
+        val jsonDriver = BukkitJson()
+        val dbDriver = BukkitDb(File(pluginFolder, "data.db").absolutePath)
+
+        val context = PluginContext(
+            plugin.server.consoleSender,
+            plugin,
+            ioDriver,
+            jsonDriver,
+            dbDriver,
+            pluginName,
+            pluginFolder,
+            onPluginDecl = { cst, chunk, vm -> dispatchKeyword(cst, chunk, vm) }
+        )
+
+        val vm = ContextVM(context)
+
+        val preloadedConfigs = script.preloadConfigs(pluginFolder.absolutePath)
+        vm.setGlobals(preloadedConfigs)
+
+        val paperGlobals = PaperGlobals.getGlobals(plugin.server.consoleSender, plugin.server)
+        vm.setGlobals(paperGlobals)
+
+        context.setVM(vm)
+
+        vm.execute(script.getChunk())
+
+        val loaded = LoadedPlugin(
+            name = pluginName,
+            script = script,
+            enableScript = script,
+            disableScript = script,
+            context = context,
+            folder = pluginFolder,
+            vm = vm
+        )
+
+        loadedPlugins[pluginName] = loaded
+        plugin.logger.info("Ink plugin loaded: $pluginName")
+        return Result.success(loaded)
+    }
+
+    /**
+     * Dispatch a grammar declaration to the appropriate built-in keyword handler.
+     */
+    private fun dispatchKeyword(cst: CstNode.Declaration, chunk: Chunk, vm: ContextVM) {
+        val handler = keywordHandlers[cst.keyword]
+        if (handler != null) {
+            handler(cst, chunk, vm, plugin)
+        } else {
+            plugin.logger.fine("[Ink] No handler for grammar keyword '${cst.keyword}' (${cst.name})")
+        }
+    }
+
+    /**
+     * Unload a plugin (execute disable block, discard VM).
      */
     fun unloadPlugin(pluginName: String) {
         val loaded = loadedPlugins.remove(pluginName) ?: return
         try {
-            loaded.disableScript?.let { disableScript ->
-                loaded.vm.execute(disableScript.getChunk())
-            }
+            loaded.disableScript?.let { loaded.vm.execute(it.getChunk()) }
         } catch (e: Exception) {
             plugin.logger.severe("Error during disable for $pluginName: ${e.message}")
         }
         plugin.logger.info("Ink plugin unloaded: $pluginName")
     }
 
-    /**
-     * Unload all plugins on server shutdown.
-     */
     fun unloadAll() {
         loadedPlugins.keys.toList().forEach { unloadPlugin(it) }
     }
 
-    /**
-     * Fire an event to all loaded plugins.
-     * Each plugin's handler runs in its own persistent VM.
-     */
     fun fireEvent(eventName: String, event: Value.EventObject, data: List<Value?>): Boolean {
         var cancelled = false
         for (loaded in loadedPlugins.values) {

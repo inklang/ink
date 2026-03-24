@@ -1,6 +1,8 @@
 package org.inklang.grammar
 
+import kotlinx.serialization.json.Json
 import java.io.File
+import java.net.URL
 import java.nio.file.Path
 
 /**
@@ -11,6 +13,10 @@ data class MergedGrammar(
     val rules: Map<String, RuleEntry>,
     val declarations: List<DeclarationDef>
 )
+
+private val grammarJson = Json {
+    ignoreUnknownKeys = true
+}
 
 /**
  * Loads and merges multiple Ink packages from a parent directory.
@@ -40,6 +46,51 @@ class PackageRegistry {
             packages.add(GrammarLoader.load(dir))
         }
         return packages.toList()
+    }
+
+    /**
+     * Load grammars from the JVM classpath (e.g., from a plugin JAR).
+     * Searches for classpath resources matching basePaths/ink-manifest.json.
+     *
+     * @param basePaths List of classpath root prefixes to search under, e.g. "ink/bukkit/dist"
+     * @param classLoader The ClassLoader to search in. Defaults to the current thread's context classloader.
+     */
+    fun loadFromClasspath(basePaths: List<String>, classLoader: ClassLoader? = null): List<LoadedPackage> {
+        val loader = classLoader ?: Thread.currentThread().contextClassLoader
+        val result = mutableListOf<LoadedPackage>()
+
+        for (basePath in basePaths) {
+            val manifestPath = "$basePath/ink-manifest.json"
+            val urls = loader.getResources(manifestPath).toList()
+            for (url in urls) {
+                try {
+                    val loaded = loadFromManifestUrl(url)
+                    if (loaded != null) result.add(loaded)
+                } catch (e: Exception) {
+                    // Skip invalid grammar packages on classpath
+                    System.err.println("[Ink] Warning: failed to load grammar from $url: ${e.message}")
+                }
+            }
+        }
+        return result
+    }
+
+    /**
+     * Load a grammar package from a classpath URL of ink-manifest.json.
+     * Infers the grammar IR path from the manifest's "grammar" field relative to the manifest URL.
+     */
+    private fun loadFromManifestUrl(manifestUrl: URL): LoadedPackage? {
+        val manifestText = manifestUrl.openConnection().inputStream.bufferedReader().readText()
+        val manifest = grammarJson.decodeFromString<InkManifest>(manifestText)
+
+        val grammar = manifest.grammar?.let { grammarPath ->
+            // Resolve grammar path relative to the manifest's directory
+            val grammarUrl = URL(manifestUrl, grammarPath)
+            val grammarText = grammarUrl.openConnection().inputStream.bufferedReader().readText()
+            grammarJson.decodeFromString<GrammarPackage>(grammarText)
+        }
+
+        return LoadedPackage(manifest, grammar)
     }
 
     /**

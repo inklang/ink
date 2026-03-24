@@ -31,6 +31,9 @@ class PluginRuntime(
 
     private val pluginRegistry: PluginParserRegistry by lazy {
         val registry = PackageRegistry()
+        // Load grammars from plugin JAR's classpath (e.g., ink/bukkit/dist/)
+        registry.loadFromClasspath(listOf("ink/bukkit/dist"))
+        // Also load grammars from disk (e.g., third-party plugin grammars)
         registry.loadAll(File(plugin.dataFolder, "grammars"))
         val merged = registry.merge()
         PluginParserRegistry(merged)

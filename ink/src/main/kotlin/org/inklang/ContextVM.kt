@@ -3,6 +3,7 @@ package org.inklang
 import org.inklang.lang.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.locks.ReentrantLock
 
 /**
  * Exception thrown when a script execution exceeds its instruction limit.
@@ -29,6 +30,8 @@ class ContextVM(
     private val maxInstructions: Int = 0  // 0 = no limit
 ) {
     private var instructionCount: Long = 0
+    @PublishedApi
+    internal val lock = ReentrantLock()
 
     // Thread pools for async operations
     private val virtualThreadPool = ForkJoinPool.commonPool()
@@ -116,6 +119,15 @@ class ContextVM(
      */
     fun setGlobals(overrides: Map<String, Value>) {
         globals.putAll(overrides)
+    }
+
+    inline fun <T> executeWithLock(fn: () -> T): T {
+        lock.lock()
+        try {
+            return fn()
+        } finally {
+            lock.unlock()
+        }
     }
 
     data class CallFrame(
@@ -619,7 +631,9 @@ class ContextVM(
                     }
                     OpCode.CALL_HANDLER -> {
                         val cst = frame.chunk.cstTable[imm]
-                        // Stub: plugin handler dispatch not yet wired in ContextVM
+                        if (cst is org.inklang.grammar.CstNode.Declaration) {
+                            context.dispatchPluginDecl(cst, frame.chunk)
+                        }
                     }
                 }
             } catch (e: ScriptException) {
@@ -1019,7 +1033,10 @@ class ContextVM(
                         currentFrame.regs[dst] = currentFrame.upvalues?.get(imm) ?: throw ScriptException("Upvalue at index $imm is not set")
                     }
                     OpCode.CALL_HANDLER -> {
-                        // Plugin handler dispatch stub
+                        val cst = currentFrame.chunk.cstTable[imm]
+                        if (cst is org.inklang.grammar.CstNode.Declaration) {
+                            context.dispatchPluginDecl(cst, currentFrame.chunk)
+                        }
                     }
                 }
             } catch (e: ScriptException) {

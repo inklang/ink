@@ -3,9 +3,10 @@ package org.inklang.bukkit.handlers
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.inklang.ContextVM
-import org.inklang.bukkit.BukkitRuntimeRegistrar
 import org.inklang.bukkit.InkBukkit
+import org.inklang.bukkit.runtime.PlayerClass
 import org.inklang.grammar.CstNode
+import org.inklang.lang.Builtins
 import org.inklang.lang.Chunk
 import org.inklang.lang.Value
 
@@ -36,8 +37,8 @@ object CommandHandler {
             override fun execute(sender: CommandSender, label: String, args: Array<out String>): Boolean {
                 vm.executeWithLock {
                     vm.setGlobals(mapOf(
-                        "sender" to BukkitRuntimeRegistrar.wrapSender(sender),
-                        "args"   to Value.List(args.toList())
+                        "sender" to Value.Instance(PlayerClass.createDescriptor(sender, plugin.server)),
+                        "args"   to Builtins.newArray(args.map { Value.String(it) }.toMutableList())
                     ))
                     vm.execute(chunk.functions[fnBlock.funcIdx])
                 }

@@ -238,6 +238,12 @@ class SsaBuilder(
         is IrInstr.Throw -> null
         is IrInstr.RegisterEventHandler -> null
         is IrInstr.InvokeEventHandler -> null
+        is IrInstr.CallHandler -> null
+        is IrInstr.TryStart -> null
+        is IrInstr.TryEnd -> null
+        is IrInstr.TryEndFinally -> null
+        is IrInstr.ThrowInstr -> null
+        is IrInstr.ExitTry -> null
     }
 
     /**

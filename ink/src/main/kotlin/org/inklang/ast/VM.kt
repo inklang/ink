@@ -21,6 +21,8 @@ fun valueToString(v: Value): String = when (v) {
 }
 
 class VM {
+    val handlers = mutableMapOf<String, (org.inklang.grammar.CstNode) -> Unit>()
+
     // Pre-created instances for stdlib - must be initialized before globals
     private val mathInstance = Builtins.newMath()
     private val randomInstance = Builtins.newRandom()
@@ -92,6 +94,15 @@ class VM {
         val argBuffer: ArrayDeque<Value> = ArrayDeque()  // Staging buffer for PUSH_ARG
     ) {
         val spills: Array<Value?> = arrayOfNulls(chunk.spillSlotCount)
+        var thrownValue: Value? = null
+        var pendingReturnValue: Value? = null
+        val handlerStack: MutableList<HandlerRecord> = mutableListOf()
+
+        data class HandlerRecord(
+            val finallyPc: Int?,   // bytecode offset, null if no finally
+            val catchPc: Int?,     // bytecode offset, null if no catch
+            val scopeStartIp: Int
+        )
     }
 
     fun execute(chunk: Chunk) {
@@ -229,7 +240,8 @@ class VM {
                     frame.argBuffer.addLast(frame.regs[src1] ?: error("Null value in PUSH_ARG at reg $src1 (ip=${frame.ip - 1}, chunk.constants=${frame.chunk.constants.take(5)}, strings=${frame.chunk.strings.take(3)})"))
                 }
                 OpCode.RETURN -> {
-                    val returnVal = frame.regs[src1]
+                    val returnVal = frame.pendingReturnValue ?: frame.regs[src1]
+                    frame.pendingReturnValue = null  // clear after use
                     val returnDst = frame.returnDst
                     frames.removeLast()
                     if (frames.isNotEmpty()) {
@@ -398,14 +410,54 @@ class VM {
                 OpCode.SPILL   -> frame.spills[imm] = frame.regs[src1]
                 OpCode.UNSPILL -> frame.regs[dst] = frame.spills[imm]!!
                 OpCode.THROW   -> {
-                    val throwable = frame.regs[src1] ?: error("Cannot throw null")
-                    // For now, just print the error and exit the VM
-                    // TODO: proper exception handling with try/catch
-                    val message = when (throwable) {
-                        is Value.String -> throwable.value
-                        else -> throwable.toString()
+                    val thrown = frame.regs[src1] ?: error("Cannot throw null")
+                    frame.thrownValue = thrown
+                    unwind(frame, frames)
+                }
+                OpCode.THROW_INSTR -> {
+                    val thrown = frame.regs[src1] ?: error("Cannot throw null")
+                    frame.thrownValue = thrown
+                    unwind(frame, frames)
+                }
+                OpCode.CALL_HANDLER -> {
+                    val cst = frame.chunk.cstTable[imm]
+                    val keyword = (cst as org.inklang.grammar.CstNode.Declaration).keyword
+                    val handler = handlers[keyword]
+                        ?: error("No handler registered for plugin keyword '$keyword'")
+                    handler(cst)
+                }
+                OpCode.TRY_START -> {
+                    val finallyPc = if (dst != 0x0F) dst else null
+                    val catchPc = if (imm != 0xFFF) imm else null
+                    frame.handlerStack.add(CallFrame.HandlerRecord(finallyPc, catchPc, frame.ip))
+                }
+                OpCode.TRY_END -> {
+                    if (frame.handlerStack.isNotEmpty()) {
+                        frame.handlerStack.removeLast()
                     }
-                    error("Uncaught exception: $message")
+                }
+                OpCode.TRY_END_FINALLY -> {
+                    if (frame.handlerStack.isNotEmpty()) {
+                        frame.handlerStack.removeLast()
+                    }
+                    // dst is the bytecode offset of the finally label
+                    frame.ip = dst
+                }
+                OpCode.EXIT_TRY -> {
+                    val returnVal = frame.regs[src1]
+                    frame.pendingReturnValue = returnVal
+                    if (frame.handlerStack.isNotEmpty()) {
+                        val record = frame.handlerStack.removeLast()
+                        if (record.finallyPc != null) {
+                            frame.ip = record.finallyPc
+                            continue
+                        }
+                    }
+                    // No finally — execute return immediately
+                    frames.removeLast()
+                    if (frames.isNotEmpty()) {
+                        frames.last().regs[frame.returnDst] = returnVal
+                    }
                 }
                 OpCode.REGISTER_EVENT -> {
                     val eventName: kotlin.String = (frame.regs[src1] as? Value.String)?.value ?: ""
@@ -426,6 +478,26 @@ class VM {
         is Value.Boolean -> !v.value
         is Value.Null  -> true
         else           -> false
+    }
+
+    private tailrec fun unwind(frame: CallFrame, frames: ArrayDeque<CallFrame>) {
+        if (frame.handlerStack.isNotEmpty()) {
+            val record = frame.handlerStack.removeLast()
+            if (record.finallyPc != null) {
+                frame.ip = record.finallyPc
+                return
+            }
+            if (record.catchPc != null) {
+                frame.ip = record.catchPc
+                return
+            }
+        }
+        frames.removeLast()
+        if (frames.isNotEmpty()) {
+            unwind(frames.last(), frames)
+        } else {
+            throw RuntimeException("Uncaught: ${frame.thrownValue}")
+        }
     }
 
     private fun toDouble(v: Value): Double = when (v) {

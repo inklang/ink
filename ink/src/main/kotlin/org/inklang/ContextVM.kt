@@ -490,6 +490,19 @@ class ContextVM(
                         }
                         throw ScriptException("Uncaught exception: $message")
                     }
+                    OpCode.CALL_HANDLER -> { /* plugin declaration handler - no-op in ContextVM */ }
+                    OpCode.TRY_START -> { /* try/catch not supported in ContextVM */ }
+                    OpCode.TRY_END -> { /* try/catch not supported in ContextVM */ }
+                    OpCode.TRY_END_FINALLY -> { /* try/catch not supported in ContextVM */ }
+                    OpCode.THROW_INSTR -> {
+                        val throwable = frame.regs[src1] ?: throw ScriptException("Cannot throw null")
+                        val message = when (throwable) {
+                            is Value.String -> throwable.value
+                            else -> throwable.toString()
+                        }
+                        throw ScriptException("Uncaught exception: $message")
+                    }
+                    OpCode.EXIT_TRY -> { /* try/catch not supported in ContextVM */ }
                     OpCode.REGISTER_EVENT -> {
                         // Event handlers are registered at compile time via context.registerEventHandler()
                         // At runtime this is a no-op
@@ -879,6 +892,19 @@ class ContextVM(
                         }
                         throw ScriptException("Uncaught exception: $message")
                     }
+                    OpCode.CALL_HANDLER -> { /* plugin declaration handler - no-op in ContextVM */ }
+                    OpCode.TRY_START -> { /* try/catch not supported in ContextVM */ }
+                    OpCode.TRY_END -> { /* try/catch not supported in ContextVM */ }
+                    OpCode.TRY_END_FINALLY -> { /* try/catch not supported in ContextVM */ }
+                    OpCode.THROW_INSTR -> {
+                        val throwable = currentFrame.regs[src1] ?: throw ScriptException("Cannot throw null")
+                        val message = when (throwable) {
+                            is Value.String -> throwable.value
+                            else -> throwable.toString()
+                        }
+                        throw ScriptException("Uncaught exception: $message")
+                    }
+                    OpCode.EXIT_TRY -> { /* try/catch not supported in ContextVM */ }
                     OpCode.REGISTER_EVENT -> {
                         // Event handlers are registered at compile time - no-op at runtime
                     }

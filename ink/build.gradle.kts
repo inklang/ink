@@ -1,5 +1,8 @@
+import java.time.Duration
+
 plugins {
     kotlin("jvm") version "2.2.21"
+    kotlin("plugin.serialization") version "2.2.21"
     application
 }
 
@@ -16,6 +19,7 @@ repositories {
 
 dependencies {
     implementation("org.yaml:snakeyaml:2.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     testImplementation(kotlin("test"))
 }
 
@@ -25,4 +29,8 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+    systemProperty("junit.jupiter.execution.timeout.default", "10s")
+    testLogging {
+        events("passed", "failed", "skipped", "started")
+    }
 }

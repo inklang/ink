@@ -33,7 +33,10 @@ private fun unescape(s: String): String = buildString {
     }
 }
 
-class Parser(private val tokens: List<Token>) {
+class Parser(
+    private val tokens: List<Token>,
+    private val pluginRegistry: org.inklang.grammar.PluginParserRegistry? = null
+) {
     private var cursor = 0
 
     companion object {
@@ -223,10 +226,18 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KW_ON) -> parseOnHandler()
             check(TokenType.KW_ENABLE) -> parseEnable()
             check(TokenType.KW_DISABLE) -> parseDisable()
+            check(TokenType.KW_TRY) -> parseTryCatch()
             else -> {
-                val expr = parseExpression(0)
-                if (check(TokenType.SEMICOLON)) advance()
-                Stmt.ExprStmt(expr)
+                // Check for plugin declaration before falling through to expression
+                if (check(TokenType.IDENTIFIER) && pluginRegistry?.isPluginKeyword(peek().lexeme) == true) {
+                    val (cst, consumed) = pluginRegistry.parseDeclaration(tokens, cursor)
+                    cursor += consumed
+                    Stmt.PluginDeclStmt(cst.keyword, cst.name, cst)
+                } else {
+                    val expr = parseExpression(0)
+                    if (check(TokenType.SEMICOLON)) advance()
+                    Stmt.ExprStmt(expr)
+                }
             }
         }
     }
@@ -259,6 +270,31 @@ class Parser(private val tokens: List<Token>) {
         val condition = parseExpression(0)
         val body = parseBlock()
         return Stmt.WhileStmt(condition, body)
+    }
+
+    private fun parseTryCatch(): Stmt {
+        consume(TokenType.KW_TRY, "Expected 'try'")
+        val tryBody = parseBlock()
+        var catchVar: Token? = null
+        var catchBody: Stmt.BlockStmt? = null
+        var finallyBody: Stmt.BlockStmt? = null
+
+        if (match(TokenType.KW_CATCH)) {
+            if (check(TokenType.IDENTIFIER)) {
+                catchVar = advance()
+            }
+            catchBody = parseBlock()
+        }
+
+        if (match(TokenType.KW_FINALLY)) {
+            finallyBody = parseBlock()
+        }
+
+        if (catchBody == null && finallyBody == null) {
+            throw error(peek(), "try block requires at least one of catch or finally")
+        }
+
+        return Stmt.TryCatchStmt(tryBody, catchVar, catchBody, finallyBody)
     }
 
     private fun parseFor(): Stmt {
@@ -640,6 +676,9 @@ class Parser(private val tokens: List<Token>) {
                 }
                 consume(TokenType.R_SQUARE, "Expected ']'")
                 Expr.ListExpr(elements)
+            }
+            TokenType.KW_THROW -> {
+                return Expr.ThrowExpr(parseExpression(0))
             }
             else -> throw error(
                 token,

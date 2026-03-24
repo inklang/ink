@@ -17,6 +17,8 @@ open class AstLowerer {
     protected var lambdaCounter = 0
     // Field names for class methods - used to resolve bare identifiers to self.fieldName
     protected open var fieldNames: Set<String> = emptySet()
+    private var activeFinally: IrLabel? = null
+    private val THROWN_VALUE_REG = 15
 
     private fun freshReg(): Int = regCounter++
     private fun freshLabel(): IrLabel = IrLabel(labelCounter++)
@@ -50,8 +52,14 @@ open class AstLowerer {
         is Stmt.WhileStmt -> lowerWhile(stmt)
         is Stmt.ForRangeStmt -> lowerForRange(stmt)
         is Stmt.ReturnStmt -> lowerReturn(stmt)
-        Stmt.BreakStmt -> emit(IrInstr.Jump(breakLabel ?: error("break outside loop")))
-        Stmt.NextStmt -> emit(IrInstr.Jump(nextLabel ?: error("next outside loop")))
+        Stmt.BreakStmt -> {
+            if (activeFinally != null) emit(IrInstr.ExitTry(0))
+            emit(IrInstr.Jump(breakLabel ?: error("break outside loop")))
+        }
+        Stmt.NextStmt -> {
+            if (activeFinally != null) emit(IrInstr.ExitTry(0))
+            emit(IrInstr.Jump(nextLabel ?: error("next outside loop")))
+        }
         is Stmt.ClassStmt -> lowerClass(stmt)
         is Stmt.EnumStmt -> {
             val nsClassReg = freshReg()
@@ -224,6 +232,53 @@ open class AstLowerer {
         }
         is Stmt.EnableStmt -> lowerBlock(stmt.block)
         is Stmt.DisableStmt -> lowerBlock(stmt.block)
+        is Stmt.TryCatchStmt -> lowerTryCatch(stmt)
+        is Stmt.PluginDeclStmt -> {
+            emit(IrInstr.CallHandler(stmt.keyword, stmt.cst))
+        }
+    }
+
+    private fun lowerTryCatch(stmt: Stmt.TryCatchStmt) {
+        val catchLabel = stmt.catchBody?.let { freshLabel() }
+        val finallyLabel = stmt.finallyBody?.let { freshLabel() }
+        val endLabel = freshLabel()
+
+        val prevFinally = activeFinally
+        activeFinally = finallyLabel
+
+        emit(IrInstr.TryStart(finallyLabel?.id, catchLabel?.id))
+        lowerBlock(stmt.body)
+        finallyLabel?.let {
+            activeFinally = prevFinally  // reset BEFORE TryEndFinally pops handler
+            emit(IrInstr.TryEndFinally(it.id))
+        } ?: emit(IrInstr.TryEnd)
+        emit(IrInstr.Jump(endLabel))
+
+        activeFinally = prevFinally
+
+        catchLabel?.let {
+            emit(IrInstr.Label(it))
+            if (stmt.catchVar != null) {
+                val slot = freshReg()
+                locals[stmt.catchVar.lexeme] = slot
+                emit(IrInstr.Move(slot, THROWN_VALUE_REG))
+            }
+            lowerBlock(stmt.catchBody!!)
+            freeLocal(stmt.catchVar?.lexeme)
+        }
+
+        finallyLabel?.let {
+            emit(IrInstr.Label(it))
+            activeFinally = it
+            lowerBlock(stmt.finallyBody!!)
+            activeFinally = prevFinally
+        }
+
+        emit(IrInstr.Label(endLabel))
+    }
+
+    private fun freeLocal(name: String?) {
+        if (name != null) locals.remove(name)
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {
@@ -800,8 +855,8 @@ open class AstLowerer {
             dst
         }
         is Expr.ThrowExpr -> {
-            val valueReg = lowerExpr(expr.value, freshReg())
-            emit(IrInstr.Throw(valueReg))
+            val src = lowerExpr(expr.value, THROWN_VALUE_REG)
+            emit(IrInstr.ThrowInstr(src))
             dst  // unreachable, but for type consistency
         }
         // AnnotationExpr should not appear at runtime - annotations are compile-time only

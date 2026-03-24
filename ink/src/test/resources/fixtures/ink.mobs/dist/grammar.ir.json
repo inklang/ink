@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "package": "ink.mobs",
+  "keywords": ["mob", "on_spawn"],
+  "rules": {
+    "ink.mobs/on_spawn_clause": {
+      "rule": {
+        "type": "seq",
+        "items": [
+          {"type": "keyword", "value": "on_spawn"},
+          {"type": "block", "scope": null}
+        ]
+      }
+    }
+  },
+  "declarations": [
+    {
+      "keyword": "mob",
+      "nameRule": {"type": "identifier"},
+      "scopeRules": ["ink.mobs/on_spawn_clause"],
+      "inheritsBase": true
+    }
+  ]
+}

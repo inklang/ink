@@ -22,7 +22,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build shadow JAR
-        run: ./gradlew :ink-bukkit:shadowJar
+        run: chmod +x gradlew && ./gradlew :ink-bukkit:shadowJar
 
       - name: Rename JAR
         run: cp ink-bukkit/build/libs/inklang-bukkit-1.0-SNAPSHOT.jar Ink.jar

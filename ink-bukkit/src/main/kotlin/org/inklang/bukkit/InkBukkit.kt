@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin
 import org.inklang.ContextVM
 import org.inklang.InkScript
 import org.inklang.InkCompiler
+import org.inklang.inkScriptFromJson
 import org.inklang.bukkit.runtime.BukkitRuntimeRegistrar
 import org.inklang.lang.ClassRegistry
 import java.io.File
@@ -48,13 +49,28 @@ class InkBukkit : JavaPlugin() {
             return
         }
 
-        pluginsDir.listFiles { file -> file.extension == "ink" }
-            ?.forEach { pluginFile ->
-                val result = pluginRuntime.loadPlugin(pluginFile)
-                if (result.isFailure) {
-                    logger.severe("Failed to load ${pluginFile.name}: ${result.exceptionOrNull()?.message}")
-                }
+        val inkFiles  = pluginsDir.listFiles { f -> f.extension == "ink"  }?.toList()  ?: emptyList()
+        val inkcFiles = pluginsDir.listFiles { f -> f.extension == "inkc" }?.toList() ?: emptyList()
+
+        // Build set of names that have a precompiled .inkc — these take priority
+        val compiledNames = inkcFiles.map { it.nameWithoutExtension }.toSet()
+
+        // Load precompiled plugins first
+        for (inkcFile in inkcFiles) {
+            val result = pluginRuntime.loadCompiledPlugin(inkcFile)
+            if (result.isFailure) {
+                logger.severe("Failed to load ${inkcFile.name}: ${result.exceptionOrNull()?.message}")
             }
+        }
+
+        // Load source plugins that don't have a precompiled counterpart
+        for (inkFile in inkFiles) {
+            if (inkFile.nameWithoutExtension in compiledNames) continue
+            val result = pluginRuntime.loadPlugin(inkFile)
+            if (result.isFailure) {
+                logger.severe("Failed to load ${inkFile.name}: ${result.exceptionOrNull()?.message}")
+            }
+        }
     }
 
     override fun onCommand(
@@ -66,7 +82,7 @@ class InkBukkit : JavaPlugin() {
         if (command.name != "ink") return false
 
         if (args.isEmpty()) {
-            sender.sendMessage("§cUsage: /ink <run|list|reload> [args]")
+            sender.sendMessage("§cUsage: /ink <run|list|load|unload|reload> [args]")
             return true
         }
 
@@ -78,6 +94,37 @@ class InkBukkit : JavaPlugin() {
                 } else {
                     val scriptName = args.drop(1).joinToString(" ")
                     runScript(sender, scriptName)
+                    true
+                }
+            }
+            "load" -> {
+                if (args.size < 2) {
+                    sender.sendMessage("§cUsage: /ink load <plugin>")
+                    true
+                } else {
+                    val pluginName = args[1]
+                    val pluginFile = File(File(dataFolder, "plugins"), "$pluginName.ink")
+                    if (!pluginFile.exists()) {
+                        sender.sendMessage("§cPlugin not found: $pluginName.ink")
+                    } else {
+                        val result = pluginRuntime.loadPlugin(pluginFile)
+                        if (result.isSuccess) {
+                            sender.sendMessage("§aPlugin loaded: $pluginName")
+                        } else {
+                            sender.sendMessage("§cFailed to load $pluginName: ${result.exceptionOrNull()?.message}")
+                        }
+                    }
+                    true
+                }
+            }
+            "unload" -> {
+                if (args.size < 2) {
+                    sender.sendMessage("§cUsage: /ink unload <plugin>")
+                    true
+                } else {
+                    val pluginName = args[1]
+                    pluginRuntime.unloadPlugin(pluginName)
+                    sender.sendMessage("§aPlugin unloaded: $pluginName")
                     true
                 }
             }
@@ -100,7 +147,7 @@ class InkBukkit : JavaPlugin() {
                 true
             }
             else -> {
-                sender.sendMessage("§cUnknown subcommand. Use: /ink <run|list|reload>")
+                sender.sendMessage("§cUnknown subcommand. Use: /ink <run|list|load|unload|reload>")
                 true
             }
         }
@@ -108,14 +155,21 @@ class InkBukkit : JavaPlugin() {
 
     private fun runScript(sender: CommandSender, scriptName: String) {
         try {
-            val scriptFile = File(File(dataFolder, "scripts"), "$scriptName.ink")
-            if (!scriptFile.exists()) {
-                sender.sendMessage("§cScript not found: $scriptName.ink")
-                return
-            }
+            val scriptsDir = File(dataFolder, "scripts")
+            val inkcFile = File(scriptsDir, "$scriptName.inkc")
+            val inkFile  = File(scriptsDir, "$scriptName.ink")
 
-            val compiled = scriptCache.getOrPut(scriptFile.absolutePath) {
-                compiler.compile(scriptFile.readText(), scriptName)
+            val compiled = when {
+                inkcFile.exists() -> scriptCache.getOrPut(inkcFile.absolutePath) {
+                    inkScriptFromJson(inkcFile.readText())
+                }
+                inkFile.exists() -> scriptCache.getOrPut(inkFile.absolutePath) {
+                    compiler.compile(inkFile.readText(), scriptName)
+                }
+                else -> {
+                    sender.sendMessage("§cScript not found: $scriptName (.ink or .inkc)")
+                    return
+                }
             }
 
             val scriptDir = File(File(dataFolder, "scripts"), scriptName)

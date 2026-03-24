@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `--sources <dir> --out <dir> [--grammar <file>...]` batch compilation mode to printing_press, matching ink.jar's CLI interface. Update quill's ink-build to use printing_press.
+**Goal:** Add `--sources <dir> --out <dir>` batch compilation mode to printing_press with auto-discovery of grammars from `dist/grammar.ir.json` and `packages/*/dist/grammar.ir.json`. Update quill's ink-build to use printing_press.
 
-**Architecture:** printing_press gains a GrammarPackage deserializer and merged grammar registry. The parser accepts an optional grammar registry for resolving grammar rule references. The SerialScript's `config_definitions` is populated from grammar handlers.
+**Architecture:** printing_press auto-discovers grammars on startup by scanning `dist/grammar.ir.json` and `packages/*/dist/grammar.ir.json` relative to the working directory. No CLI flags needed for grammar. The compiler reads the same grammar IR files that Quill's build step produces.
 
 **Tech Stack:** Rust (serde, clap), TypeScript (quill build tool)
 
@@ -151,7 +151,46 @@ git commit -m "feat(printing_press): add Grammar IR types and loading"
 **Files:**
 - Modify: `src/main.rs`
 
-- [ ] **Step 1: Rewrite CLI arguments** to support both single-file and batch mode
+- [ ] **Step 1: Add `discover_grammars()` function** — auto-discovers grammars from the working directory
+
+Add to `src/inklang/grammar.rs`:
+
+```rust
+/// Auto-discover grammars by scanning:
+/// 1. `dist/grammar.ir.json` (project's own grammar)
+/// 2. `packages/*/dist/grammar.ir.json` (installed packages)
+pub fn discover_grammars() -> Option<MergedGrammar> {
+    let mut packages = Vec::new();
+
+    // Scan dist/grammar.ir.json
+    if let Ok(pkg) = load_grammar("dist/grammar.ir.json") {
+        packages.push(pkg);
+    }
+
+    // Scan packages/*/dist/grammar.ir.json
+    if let Ok(entries) = std::fs::read_dir("packages") {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let pkg_path = entry.path();
+            if pkg_path.is_dir() {
+                let grammar_path = pkg_path.join("dist/grammar.ir.json");
+                if grammar_path.exists() {
+                    if let Ok(pkg) = load_grammar(grammar_path.to_str().unwrap_or("")) {
+                        packages.push(pkg);
+                    }
+                }
+            }
+        }
+    }
+
+    if packages.is_empty() {
+        None
+    } else {
+        Some(merge_grammars(packages))
+    }
+}
+```
+
+- [ ] **Step 2: Rewrite CLI arguments** to support both single-file and batch mode
 
 ```rust
 use clap::Parser;
@@ -186,10 +225,6 @@ struct CompileArgs {
     #[arg(long, value_name = "DIR")]
     out: Option<String>,
 
-    /// Grammar IR file (can be repeated)
-    #[arg(long = "grammar")]
-    grammar_files: Vec<String>,
-
     /// Pretty-print JSON output
     #[arg(short, long)]
     debug: bool,
@@ -199,32 +234,32 @@ fn main() {
     let args = Args::parse();
     match args.command {
         Command::Compile(c) => {
+            // Auto-discover grammars
+            let grammar = printing_press::inklang::grammar::discover_grammars();
+
             // Determine mode: if --sources provided, batch mode
             if let Some(sources_dir) = c.sources {
                 let out_dir = c.out.expect("--out is required in batch mode");
-                let grammar = if !c.grammar_files.is_empty() {
-                    let packages: Vec<_> = c.grammar_files.iter()
-                        .map(|p| printing_press::inklang::grammar::load_grammar(p).unwrap())
-                        .collect();
-                    Some(printing_press::inklang::grammar::merge_grammars(packages))
-                } else {
-                    None
-                };
                 batch_compile(&sources_dir, &out_dir, grammar.as_ref(), c.debug);
             } else {
                 // Single-file mode
                 let input = c.input.expect("INPUT file or --sources required");
                 let output = c.output.expect("-o/--output required in single-file mode");
-                single_compile(&input, &output, c.debug);
+                single_compile(&input, &output, grammar.as_ref(), c.debug);
             }
         }
     }
 }
 
-fn single_compile(input: &str, output: &str, debug: bool) {
+fn single_compile(input: &str, output: &str, grammar: Option<&printing_press::inklang::grammar::MergedGrammar>, debug: bool) {
     match std::fs::read_to_string(input) {
         Ok(source) => {
-            match printing_press::compile(&source, "main") {
+            let result = if let Some(g) = grammar {
+                printing_press::compile_with_grammar(&source, "main", g)
+            } else {
+                printing_press::compile(&source, "main").map_err(|e| e.into())
+            };
+            match result {
                 Ok(script) => {
                     let json = if debug {
                         serde_json::to_string_pretty(&script).unwrap()
@@ -410,17 +445,14 @@ Then build the appropriate command:
 
 ```typescript
 if (isPrintingPress) {
-  // printing_press batch mode
+  // printing_press batch mode (grammars auto-discovered from dist/grammar.ir.json)
   const compilerPath = compiler!.replace(/\\/g, '/')
   const sourcesFwd = scriptsDir.replace(/\\/g, '/')
   const outFwd = outDir.replace(/\\/g, '/')
-  const grammarFlags = grammarArgs
-    .map(p => `--grammar "${p.replace(/\\/g, '/')}"`)
-    .join(' ')
 
   try {
     execSync(
-      `"${compilerPath}" compile --sources "${sourcesFwd}" --out "${outFwd}" ${grammarFlags}`,
+      `"${compilerPath}" compile --sources "${sourcesFwd}" --out "${outFwd}"`,
       { cwd: this.projectDir, stdio: 'pipe' } as any
     )
   } catch (e: any) {
@@ -429,7 +461,7 @@ if (isPrintingPress) {
     process.exit(1)
   }
 } else {
-  // ink.jar mode (existing)
+  // ink.jar mode (existing, uses --grammar flags)
   execSync(
     `"${javaCmd}" -jar "${compilerPath}" compile ${grammarFlags} --sources "${scriptsDirFwd}" --out "${outDirFwd}"`,
     { cwd: this.projectDir, stdio: 'pipe' } as any
@@ -468,17 +500,21 @@ printing_press compile <input.ink> -o <output.json> [--debug]
 ### Batch Compilation
 
 ```bash
-printing_press compile --sources <dir> --out <dir> [--grammar <ir.json>...] [--debug]
+printing_press compile --sources <dir> --out <dir> [--debug]
 ```
 
-Scan a directory of `.ink` files and compile each to `.inkc`.
+Scan a directory of `.ink` files and compile each to `.inkc`. Grammars are auto-discovered from `dist/grammar.ir.json` and `packages/*/dist/grammar.ir.json`.
 
 **Arguments:**
 - `--sources <dir>` — Directory containing `.ink` source files
 - `--out <dir>` — Output directory for compiled `.inkc` files
-- `--grammar <file>` — Grammar IR file (can be repeated for multiple grammars)
 - `--debug` — Pretty-print JSON output
 - `-o <file>` — Output file (single-file mode only)
+
+**Grammar Auto-Discovery:**
+The compiler scans for grammars in:
+1. `dist/grammar.ir.json` (project's own grammar)
+2. `packages/*/dist/grammar.ir.json` (installed packages)
 ```
 
 - [ ] **Step 2: Commit**

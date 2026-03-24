@@ -635,7 +635,7 @@ private val pluginRegistry: PluginParserRegistry by lazy {
 }
 ```
 
-Note: The `ink.bukki/dist` path uses `getResource("/ink/bukkit/dist")` to find the grammar directory packaged in the plugin JAR. Adjust the path if the resources directory structure differs.
+Note: The `/ink/bukkit/dist` path uses `getResource("/ink/bukkit/dist")` to find the grammar directory packaged in the plugin JAR. Adjust the path if the resources directory structure differs.
 
 - [ ] **Step 2: Pass pluginRegistry to compiler in loadPlugin and loadCompiledPlugin**
 
@@ -683,7 +683,7 @@ git commit -m "feat: bundle ink.bukkit grammar package and wire PluginParserRegi
 
 ## Chunk 7: Integration Test
 
-### Task 8: Verify full integration
+### Task 9: Verify full integration
 
 - [ ] **Step 1: Run all tests**
 

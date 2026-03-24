@@ -118,10 +118,12 @@ class ControlFlowGraph(
                 continue
             }
 
-            // Find the immediate dominator: the strict dominator that doesn't dominate any other strict dominator
+            // Find the immediate dominator: the strict dominator that is not strictly dominated by any other strict dominator.
+            // In other words, find the strict dominator that doesn't dominate any OTHER strict dominator.
+            // If A dominates C, then C is closer to B and is the immediate dominator, not A.
             val immediate = strictDoms.first { candidate ->
                 strictDoms.all { other ->
-                    candidate == other || (doms[other]?.contains(candidate) == false)
+                    candidate == other || !(doms[candidate]?.contains(other) == true)
                 }
             }
             idoms[blockId] = immediate

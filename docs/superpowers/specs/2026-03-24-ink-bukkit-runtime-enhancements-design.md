@@ -1,7 +1,7 @@
 # ink-bukkit Runtime Enhancements Design
 
 **Date:** 2026-03-24
-**Status:** Approved
+**Status:** Finalized (reviewed and issues resolved)
 **Branch:** `feat/has-operator-v2`
 
 ## Overview
@@ -175,7 +175,9 @@ object CommandHandler {
 }
 ```
 
-### Grammar rules (added to merged grammar)
+**`sender` Ink type:** Wrapped via `BukkitRuntimeRegistrar.wrapSender(sender)` — returns a `BukkitObject` wrapping the Bukkit `CommandSender` (Player or Console). Ink code can access `sender.name` and call methods exposed through the Bukkit runtime class system.
+
+**`args` Ink type:** `Value.List` containing `Value.String` elements — the raw command arguments as provided by the player. (added to merged grammar)
 
 ```kotlin
 DeclarationDef(
@@ -217,9 +219,11 @@ player on_chat {
 
 | Clause | Bukkit Event | Event Globals |
 |--------|-------------|---------------|
-| `on_join` | `PlayerJoinEvent` | `player: Player` |
-| `on_leave` | `PlayerQuitEvent` | `player: Player` |
+| `on_join` | `PlayerJoinEvent` | `player: Player`, `cancel(): Null` |
+| `on_leave` | `PlayerQuitEvent` | `player: Player`, `cancel(): Null` |
 | `on_chat` | `AsyncPlayerChatEvent` | `player: Player`, `message: String`, `cancel(): Null` |
+
+**Note on `cancel()`:** `cancel` is passed as a per-event global native function, NOT a global builtin. This follows the same pattern as `MobHandler.on_damage` which passes `cancel` as a per-event global. When `cancel()` is called, it sets `evt.isCancelled = true` and returns `Value.Null`. This avoids polluting the global namespace with event-specific cancellation functions.
 
 ### `PlayerHandler`
 
@@ -339,12 +343,12 @@ RuleEntry(
 
 | File | Change |
 |------|--------|
-| `ink/src/main/kotlin/org/inklang/ContextVM.kt` | Add `ReentrantLock`, `executeWithLock()` |
-| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/MobListener.kt` | Use `vm.executeWithLock { ... }` |
-| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/InkBukkit.kt` | Add `/ink load` and `/ink unload` commands |
-| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/CommandHandler.kt` | **New** — command registration + execution |
-| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/PlayerHandler.kt` | **New** — player event registration + `PlayerListener` |
-| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/PluginRuntime.kt` | Wire CommandHandler and PlayerHandler into `keywordHandlers` |
+| `ink/src/main/kotlin/org/inklang/ContextVM.kt` | **[Modified]** Add `ReentrantLock`, `executeWithLock()` |
+| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/MobListener.kt` | **[Modified]** Use `vm.executeWithLock { ... }` |
+| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/InkBukkit.kt` | **[Modified]** Add `/ink load` and `/ink unload` commands |
+| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/CommandHandler.kt` | **[New]** — command registration + execution |
+| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/PlayerHandler.kt` | **[New]** — player event registration + `PlayerListener` |
+| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/PluginRuntime.kt` | **[Modified]** Wire CommandHandler and PlayerHandler into `keywordHandlers` |
 
 ---
 

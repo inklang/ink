@@ -245,7 +245,17 @@ object CommandHandler {
         plugin: InkBukkit
     ) {
         val commandName = cst.name
-        val fnBlock = cst.body.filterIsInstance<CstNode.FunctionBlock>().firstOrNull()
+        // command_clause can produce either:
+        // A) RuleMatch.children containing FunctionBlock (if grammar uses Rule.Seq with Keyword + Block)
+        // B) RuleMatch.children containing FunctionBlock directly (if grammar wraps block in a named rule)
+        // C) FunctionBlock directly in body (if grammar is simplified)
+        // Handle all cases for robustness.
+        val fnBlock = cst.body.filterIsInstance<CstNode.RuleMatch>()
+            .firstOrNull()
+            ?.children
+            ?.filterIsInstance<CstNode.FunctionBlock>()
+            ?.firstOrNull()
+            ?: cst.body.filterIsInstance<CstNode.FunctionBlock>().firstOrNull()
             ?: run {
                 plugin.logger.fine("[Ink/command] No body block for '$commandName' — nothing to register")
                 return
@@ -487,70 +497,184 @@ git commit -m "feat: add player grammar handler for join/leave/chat events"
 
 ---
 
-## Chunk 6: Grammar Rules for command and player
+## Chunk 6: Grammar Files and PluginParserRegistry Setup
 
 **Files:**
-- Modify: `ink-bukkit/src/main/kotlin/org/inklang/bukkit/PluginContext.kt` (add `dispatchPluginDecl` calls in grammar registration)
-- Modify: grammar rules in `ink/src/main/kotlin/org/inklang/grammar/` or wherever the grammar is merged
+- Create: `ink-bukkit/src/main/resources/ink/bukkit/dist/grammar.ir.json`
+- Create: `ink-bukkit/src/main/resources/ink/bukkit/dist/ink-manifest.json`
+- Modify: `ink-bukkit/src/main/kotlin/org/inklang/bukkit/PluginRuntime.kt`
 
-### Task 7: Register command and player grammar declarations
+The grammar system works as follows:
+1. Grammar packages are `.json` files (`grammar.ir.json` + `ink-manifest.json`) in a package directory
+2. `PackageRegistry.loadAll(parentDir)` discovers and loads packages from subdirectories
+3. `PluginParserRegistry` wraps the merged grammar and is passed to `Parser` at compile time
+4. When `Parser` encounters a plugin keyword (like `mob`), it calls `pluginRegistry.parseDeclaration()` which uses `DynamicParser` to parse the grammar declaration
+5. The resulting `CstNode.Declaration` is embedded in the compiled chunk's `cstTable`
+6. At runtime, `PluginRuntime.dispatchKeyword()` routes `CstNode.Declaration.keyword` to the appropriate `GrammarKeywordHandler`
 
-The grammar rules need to be added to the merged grammar that `PluginParserRegistry` uses. This happens during grammar merging in `PackageRegistry`. The actual declaration additions depend on how the grammar package is constructed.
+The bukkit plugin needs its own grammar package that includes `mob` (for existing compatibility), `command`, and `player`.
 
-- [ ] **Step 1: Find grammar package construction**
+### Task 7: Create grammar.ir.json for bukkit plugin
 
-Search for where `MergedGrammar` is created and where `DeclarationDef` entries for "mob" exist:
+- [ ] **Step 1: Create the grammar package directory**
 
-Run: `grep -rn "DeclarationDef\|mob.*MobHandler\|keywordHandlers" ink/src/main/kotlin/org/inklang/ --include="*.kt" | head -30`
+Create: `ink-bukkit/src/main/resources/ink/bukkit/dist/`
 
-Expected: Find where the grammar declarations are assembled (likely in a grammar merging phase).
+- [ ] **Step 2: Create ink-manifest.json**
 
-- [ ] **Step 2: Add command and player declarations**
-
-Add to the grammar package (wherever `mob` declaration is defined, add alongside it):
-
-```kotlin
-// command declaration
-DeclarationDef(
-    keyword = "command",
-    nameRule = Rule.Identifier,
-    scopeRules = listOf("command_clause")
-)
-
-// player declaration
-DeclarationDef(
-    keyword = "player",
-    nameRule = Rule.Identifier,
-    scopeRules = listOf("player_clause")
-)
+Create: `ink-bukkit/src/main/resources/ink/bukkit/dist/ink-manifest.json`
+```json
+{
+  "name": "ink.bukkit",
+  "version": "0.1.0",
+  "grammar": "grammar.ir.json",
+  "scripts": []
+}
 ```
 
-Add the scope rules:
-```kotlin
-RuleEntry(name = "command_clause", rule = Rule.Block(scope = null))
+- [ ] **Step 3: Create grammar.ir.json with mob, command, and player declarations**
 
-RuleEntry(
-    name = "player_clause",
-    rule = Rule.Choice(listOf(
-        Rule.Seq(listOf(Rule.Keyword("on_join"),  Rule.Block(scope = null))),
-        Rule.Seq(listOf(Rule.Keyword("on_leave"), Rule.Block(scope = null))),
-        Rule.Seq(listOf(Rule.Keyword("on_chat"),  Rule.Block(scope = null)))
-    ))
-)
+Create: `ink-bukkit/src/main/resources/ink/bukkit/dist/grammar.ir.json`
+
+```json
+{
+  "version": 1,
+  "package": "ink.bukkit",
+  "keywords": [
+    "mob", "on_spawn", "on_death", "on_damage", "on_tick", "on_target", "on_interact",
+    "command",
+    "player", "on_join", "on_leave", "on_chat"
+  ],
+  "rules": {
+    "ink.bukkit/on_spawn_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_spawn" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_death_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_death" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_damage_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_damage" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_tick_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_tick" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_target_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_target" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/on_interact_clause": {
+      "rule": { "type": "seq", "items": [{ "type": "keyword", "value": "on_interact" }, { "type": "block", "scope": null }] }
+    },
+    "ink.bukkit/command_clause": {
+      "rule": { "type": "block", "scope": null }
+    },
+    "ink.bukkit/player_clause": {
+      "rule": {
+        "type": "choice",
+        "items": [
+          { "type": "seq", "items": [{ "type": "keyword", "value": "on_join" }, { "type": "block", "scope": null }] },
+          { "type": "seq", "items": [{ "type": "keyword", "value": "on_leave" }, { "type": "block", "scope": null }] },
+          { "type": "seq", "items": [{ "type": "keyword", "value": "on_chat" }, { "type": "block", "scope": null }] }
+        ]
+      }
+    }
+  },
+  "declarations": [
+    {
+      "keyword": "mob",
+      "nameRule": { "type": "identifier" },
+      "scopeRules": [
+        "ink.bukkit/on_spawn_clause",
+        "ink.bukkit/on_death_clause",
+        "ink.bukkit/on_damage_clause",
+        "ink.bukkit/on_tick_clause",
+        "ink.bukkit/on_target_clause",
+        "ink.bukkit/on_interact_clause"
+      ],
+      "inheritsBase": true
+    },
+    {
+      "keyword": "command",
+      "nameRule": { "type": "identifier" },
+      "scopeRules": ["ink.bukkit/command_clause"],
+      "inheritsBase": true
+    },
+    {
+      "keyword": "player",
+      "nameRule": { "type": "identifier" },
+      "scopeRules": ["ink.bukkit/player_clause"],
+      "inheritsBase": true
+    }
+  ]
+}
 ```
 
-Note: If the grammar system is generated from a `.inkgrammar` file or similar DSL, follow that pattern instead.
+### Task 8: Wire PluginParserRegistry into PluginRuntime
 
-- [ ] **Step 3: Run build to verify compilation**
+- [ ] **Step 1: Add PluginParserRegistry initialization to PluginRuntime**
 
-Run: `./gradlew :ink:compileKotlin :ink-bukkit:compileKotlin 2>&1 | tail -20`
+Modify `ink-bukkit/src/main/kotlin/org/inklang/bukkit/PluginRuntime.kt` — add import and initialize the registry:
+
+Add imports:
+```kotlin
+import org.inklang.grammar.PackageRegistry
+import org.inklang.grammar.PluginParserRegistry
+```
+
+In `PluginRuntime` class body, after `private val loadedPlugins` line, add:
+```kotlin
+private val pluginRegistry: PluginParserRegistry by lazy {
+    // Load grammar packages from this JAR's resources
+    val registry = PackageRegistry()
+    // ink.bukkit grammar is bundled at resources/ink/bukkit/dist/
+    val grammarDir = plugin::class.java.getResource("/ink/bukkit/dist")
+        ?: error("ink.bukkit grammar not found in resources")
+    registry.loadAll(File(grammarDir.toURI()))
+    PluginParserRegistry(registry.merge())
+}
+```
+
+Note: The `ink.bukki/dist` path uses `getResource("/ink/bukkit/dist")` to find the grammar directory packaged in the plugin JAR. Adjust the path if the resources directory structure differs.
+
+- [ ] **Step 2: Pass pluginRegistry to compiler in loadPlugin and loadCompiledPlugin**
+
+Modify `PluginRuntime.loadPlugin()`:
+
+Old:
+```kotlin
+val parsedStatements = compiler.parse(source)
+val validationResult = compiler.validatePluginScript(parsedStatements)
+...
+val script = compiler.compile(source, pluginName)
+```
+
+New:
+```kotlin
+val parsedStatements = compiler.parse(source)
+val validationResult = compiler.validatePluginScript(parsedStatements)
+...
+val script = compiler.compile(source, pluginName, pluginRegistry)
+```
+
+Also update `loadCompiledPlugin()` similarly if it uses the compiler.
+
+- [ ] **Step 3: Verify resource path**
+
+Confirm the resource path `/ink/bukkit/dist/ink-manifest.json` is correct for Gradle resources. By default, files in `src/main/resources/` are placed at the root of the classpath, so `ink-bukkit/src/main/resources/ink/bukkit/dist/ink-manifest.json` → classpath resource at `/ink/bukkit/dist/ink-manifest.json`.
+
+Run: `./gradlew :ink-bukkit:processResources 2>&1 | grep -E "dist|ink-manifest"`
+Expected: Shows the resource being copied to build output
+
+- [ ] **Step 4: Run build to verify compilation**
+
+Run: `./gradlew :ink-bukkit:compileKotlin 2>&1 | tail -20`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add <grammar-files>
-git commit -m "feat: add command and player grammar declarations"
+git add ink-bukkit/src/main/resources/ink/bukkit/dist/
+git add ink-bukkit/src/main/kotlin/org/inklang/bukkit/PluginRuntime.kt
+git commit -m "feat: bundle ink.bukkit grammar package and wire PluginParserRegistry"
 ```
 
 ---
@@ -583,7 +707,8 @@ git commit -m "feat: ink-bukkit runtime enhancements - thread safety, load/unloa
 | `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/CommandHandler.kt` | **[New]** — command registration + execution |
 | `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/PlayerHandler.kt` | **[New]** — player event registration + `PlayerListener` |
 | `ink-bukkit/src/main/kotlin/org/inklang/bukkit/PluginRuntime.kt` | **[Modified]** Wire CommandHandler and PlayerHandler into `keywordHandlers` |
-| `ink/src/main/kotlin/org/inklang/grammar/` (or similar) | **[Modified]** Add grammar declarations for `command` and `player` |
+| `ink-bukkit/src/main/resources/ink/bukkit/dist/grammar.ir.json` | **[New]** — grammar declarations for mob, command, player |
+| `ink-bukkit/src/main/resources/ink/bukkit/dist/ink-manifest.json` | **[New]** — package manifest for ink.bukkit grammar |
 
 ## Implementation Order
 
@@ -592,5 +717,5 @@ git commit -m "feat: ink-bukkit runtime enhancements - thread safety, load/unloa
 3. **Chunk 3**: /ink load and /ink unload (independent, thin wrappers)
 4. **Chunk 4**: CommandHandler (depends on Chunk 1)
 5. **Chunk 5**: PlayerHandler (depends on Chunk 1)
-6. **Chunk 6**: Grammar rules (enables parsing of new declarations)
+6. **Chunk 6**: Grammar files (Task 7) then PluginParserRegistry wiring (Task 8) — enables parsing of new declarations, must be done before testing grammar declarations
 7. **Chunk 7**: Integration test

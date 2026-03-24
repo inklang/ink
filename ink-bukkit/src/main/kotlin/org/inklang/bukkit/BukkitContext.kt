@@ -7,6 +7,8 @@ import org.inklang.InkJson
 import org.inklang.InkDb
 import org.inklang.InkScript
 import org.inklang.ContextVM
+import org.inklang.grammar.CstNode
+import org.inklang.lang.Chunk
 import org.inklang.lang.Value
 
 class BukkitContext(
@@ -55,5 +57,9 @@ class BukkitContext(
 
     override fun setVM(vm: ContextVM) {
         this.vm = vm
+    }
+
+    override fun dispatchPluginDecl(cst: CstNode.Declaration, chunk: Chunk) {
+        // No-op in basic BukkitContext - PluginContext overrides this
     }
 }

@@ -29,6 +29,7 @@ class InkCompilerTest {
         override fun onEnable(script: InkScript) {}
         override fun onDisable(script: InkScript) {}
         override fun setVM(vm: ContextVM) {}
+        override fun dispatchPluginDecl(cst: org.inklang.grammar.CstNode.Declaration, chunk: org.inklang.lang.Chunk) {}
     }
 
     @Test

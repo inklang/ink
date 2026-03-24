@@ -1,5 +1,7 @@
 package org.inklang
 
+import org.inklang.grammar.CstNode
+import org.inklang.lang.Chunk
 import org.inklang.lang.Value
 import org.inklang.ContextVM
 
@@ -46,4 +48,7 @@ interface InkContext {
 
     /** Set the VM instance for this context. Called by PluginRuntime. */
     fun setVM(vm: ContextVM)
+
+    /** Called when a grammar declaration is encountered during script loading */
+    fun dispatchPluginDecl(cst: CstNode.Declaration, chunk: Chunk)
 }

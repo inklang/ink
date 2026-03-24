@@ -7,6 +7,8 @@ import org.inklang.InkJson
 import org.inklang.InkDb
 import org.inklang.InkScript
 import org.inklang.ContextVM
+import org.inklang.grammar.CstNode
+import org.inklang.lang.Chunk
 import org.inklang.lang.Value
 import java.io.File
 
@@ -63,5 +65,9 @@ class ScriptContext(
 
     override fun setVM(vm: ContextVM) {
         this.vm = vm
+    }
+
+    override fun dispatchPluginDecl(cst: CstNode.Declaration, chunk: Chunk) {
+        // Dynamic scripts do not handle plugin declarations
     }
 }

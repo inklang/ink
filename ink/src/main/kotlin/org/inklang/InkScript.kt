@@ -16,6 +16,9 @@ class InkScript(
     /** Exposes the compiled chunk for VM execution. */
     fun getChunk(): Chunk = chunk
 
+    /** Exposes the config definitions for serialization. */
+    fun getConfigDefinitions(): Map<String, List<ConfigFieldDef>> = configDefinitions
+
     /**
      * Pre-load all configs declared in this script from YAML files.
      * @param scriptDir The directory to look for config YAML files (e.g. "plugins/ink/scripts/")

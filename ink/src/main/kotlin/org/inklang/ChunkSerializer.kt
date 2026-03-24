@@ -123,8 +123,8 @@ fun InkScript.serialize(): String {
     val serial = SerialScript(
         name = name,
         chunk = getChunk().toSerial(),
-        configDefinitions = getConfigDefinitions().entries.associate { (configName, fields) ->
-            configName to fields.map { field ->
+        configDefinitions = getConfigDefinitions().mapValues { (_, fields) ->
+            fields.map { field ->
                 SerialConfigField(
                     name = field.name,
                     type = field.type,

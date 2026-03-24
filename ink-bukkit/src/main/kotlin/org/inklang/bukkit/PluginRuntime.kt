@@ -79,7 +79,7 @@ class PluginRuntime(
                 )
             }
 
-            val script = compiler.compile(source, pluginName, pluginRegistry)
+            val script = compiler.compile(source, pluginName)
             enableScript(pluginName, script)
         } catch (e: Exception) {
             plugin.logger.severe("Failed to load Ink plugin $pluginName: ${e.message}")

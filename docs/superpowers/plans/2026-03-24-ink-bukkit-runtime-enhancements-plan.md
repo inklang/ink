@@ -115,7 +115,7 @@ git commit -m "fix: use executeWithLock in MobListener for thread safety"
 ## Chunk 3: /ink load and /ink unload Commands
 
 **Files:**
-- Modify: `ink-bukkit/src/main/kotlin/org/inklang/bukkit/InkBukkit.kt:89-122`
+- Modify: `ink-bukkit/src/main/kotlin/org/inklang/bukkit/InkBukkit.kt` (the `onCommand` method, around lines 76-123)
 
 ### Task 3: Add /ink load command
 
@@ -541,9 +541,11 @@ Create: `ink-bukkit/src/main/resources/ink/bukkit/dist/grammar.ir.json`
   "version": 1,
   "package": "ink.bukkit",
   "keywords": [
-    "mob", "on_spawn", "on_death", "on_damage", "on_tick", "on_target", "on_interact",
+    "mob",
+    "on_spawn", "on_death", "on_damage", "on_tick", "on_target", "on_interact",
     "command",
-    "player", "on_join", "on_leave", "on_chat"
+    "player",
+    "on_join", "on_leave", "on_chat"
   ],
   "rules": {
     "ink.bukkit/on_spawn_clause": {

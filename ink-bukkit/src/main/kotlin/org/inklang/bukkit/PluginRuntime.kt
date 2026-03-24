@@ -6,7 +6,10 @@ import org.inklang.ContextVM
 import org.inklang.inkScriptFromJson
 import org.inklang.bukkit.handlers.CommandHandler
 import org.inklang.bukkit.handlers.MobHandler
+import org.inklang.bukkit.handlers.PlayerHandler
 import org.inklang.grammar.CstNode
+import org.inklang.grammar.PackageRegistry
+import org.inklang.grammar.PluginParserRegistry
 import org.inklang.lang.Chunk
 import org.inklang.lang.Value
 import java.io.File
@@ -26,10 +29,18 @@ class PluginRuntime(
     private val compiler = InkCompiler()
     private val loadedPlugins = ConcurrentHashMap<String, LoadedPlugin>()
 
+    private val pluginRegistry: PluginParserRegistry by lazy {
+        val registry = PackageRegistry()
+        registry.loadAll(File(plugin.dataFolder, "grammars"))
+        val merged = registry.merge()
+        PluginParserRegistry(merged)
+    }
+
     /** Built-in grammar keyword handlers, keyed by grammar declaration keyword. */
     private val keywordHandlers: Map<String, GrammarKeywordHandler> = mapOf(
         "mob" to MobHandler::handle,
-        "command" to CommandHandler::handle
+        "command" to CommandHandler::handle,
+        "player" to PlayerHandler::handle
     )
 
     data class LoadedPlugin(
@@ -65,7 +76,7 @@ class PluginRuntime(
                 )
             }
 
-            val script = compiler.compile(source, pluginName)
+            val script = compiler.compile(source, pluginName, pluginRegistry)
             enableScript(pluginName, script)
         } catch (e: Exception) {
             plugin.logger.severe("Failed to load Ink plugin $pluginName: ${e.message}")

@@ -1,6 +1,6 @@
 name: Ink
 version: '${version}'
-main: org.inklang.lib.bukkit.InkBukkit
+main: org.inklang.bukkit.InkBukkit
 api-version: '1.21'
 author: inklang
 description: A scripting language plugin for Minecraft servers

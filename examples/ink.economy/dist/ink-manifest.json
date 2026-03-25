@@ -1,0 +1,13 @@
+{
+  "name": "ink.economy",
+  "version": "0.1.0",
+  "description": "Single-currency economy system for inklang servers. Provides balance tracking, transfers, and built-in eco_* functions.",
+  "grammar": "grammar.ir.json",
+  "scripts": [
+    "main.inkc",
+    "examples.inkc"
+  ],
+  "keywords": ["economy", "coins", "paper", "minecraft", "server"],
+  "author": "inklang",
+  "license": "MIT"
+}

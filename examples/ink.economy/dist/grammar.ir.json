@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "package": "ink.economy",
+  "keywords": [
+    "on_config",
+    "economy"
+  ],
+  "rules": {
+    "ink.economy/on_config_clause": {
+      "rule": {
+        "type": "seq",
+        "items": [
+          {
+            "type": "keyword",
+            "value": "on_config"
+          },
+          {
+            "type": "block",
+            "scope": null
+          }
+        ]
+      }
+    }
+  },
+  "declarations": [
+    {
+      "keyword": "economy",
+      "nameRule": {
+        "type": "identifier"
+      },
+      "scopeRules": [
+        "ink.economy/on_config_clause"
+      ],
+      "inheritsBase": true
+    }
+  ]
+}

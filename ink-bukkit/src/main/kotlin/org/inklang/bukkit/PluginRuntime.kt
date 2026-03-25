@@ -9,6 +9,7 @@ import org.inklang.bukkit.handlers.PlayerHandler
 import org.inklang.grammar.CstNode
 import org.inklang.lang.Chunk
 import org.inklang.lang.Value
+import org.inklang.lang.ClassRegistry
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -88,6 +89,9 @@ class PluginRuntime(
 
         val paperGlobals = PaperGlobals.getGlobals(plugin.server.consoleSender, plugin.server)
         vm.setGlobals(paperGlobals)
+
+        // Include ClassRegistry globals (including economy eco_* functions)
+        vm.setGlobals(ClassRegistry.getAllGlobals())
 
         context.setVM(vm)
 

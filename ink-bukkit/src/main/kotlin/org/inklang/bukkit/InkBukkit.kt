@@ -7,6 +7,8 @@ import org.inklang.ContextVM
 import org.inklang.InkScript
 import org.inklang.inkScriptFromJson
 import org.inklang.bukkit.runtime.BukkitRuntimeRegistrar
+import org.inklang.bukkit.runtime.EconomySkills
+import org.inklang.bukkit.runtime.EconoDbHolder
 import org.inklang.lang.ClassRegistry
 import java.io.File
 
@@ -30,6 +32,14 @@ class InkBukkit : JavaPlugin() {
         File(dataFolder, "plugins").mkdirs()
         File(dataFolder, "scripts").mkdirs()
 
+        // Initialize economy DB and register economy functions
+        val ecoDbPath = File(dataFolder, "economy.db").absolutePath
+        EconoDbHolder.init(ecoDbPath)
+        BukkitRuntimeRegistrar.registerEconomyFunctions(EconomySkills.ALL)
+
+        // Register economy player listener (name sync on join)
+        server.pluginManager.registerEvents(EconoPlayerListener(), this)
+
         // Load plugins from plugins/ink/plugins/
         loadPlugins()
     }
@@ -38,6 +48,7 @@ class InkBukkit : JavaPlugin() {
         logger.info("Ink plugin disabling...")
         pluginRuntime.unloadAll()
         scriptCache.clear()
+        EconoDbHolder.close()
     }
 
     private fun loadPlugins() {

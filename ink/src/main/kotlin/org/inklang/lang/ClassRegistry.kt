@@ -4,18 +4,27 @@ import java.util.concurrent.ConcurrentHashMap
 
 object ClassRegistry {
     private val globals = ConcurrentHashMap<String, ClassDescriptor>()
+    private val globalFunctions = ConcurrentHashMap<String, Value>()
 
     fun registerGlobal(name: String, descriptor: ClassDescriptor) {
         globals[name] = descriptor
     }
 
-    fun getGlobal(name: String): ClassDescriptor? = globals[name]
-
-    fun getAllGlobals(): Map<String, Value> = globals.mapValues { (_, desc) ->
-        Value.Instance(desc)
+    fun registerGlobalFunction(name: String, fn: Value) {
+        globalFunctions[name] = fn
     }
 
-    fun clear() = globals.clear()
+    fun getGlobal(name: String): ClassDescriptor? = globals[name]
 
-    fun hasGlobal(name: String): Boolean = globals.containsKey(name)
+    fun getAllGlobals(): Map<String, Value> {
+        val classGlobals = globals.mapValues { (_, desc) -> Value.Instance(desc) }
+        return classGlobals + globalFunctions
+    }
+
+    fun clear() {
+        globals.clear()
+        globalFunctions.clear()
+    }
+
+    fun hasGlobal(name: String): Boolean = globals.containsKey(name) || globalFunctions.containsKey(name)
 }

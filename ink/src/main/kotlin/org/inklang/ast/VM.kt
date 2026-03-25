@@ -418,6 +418,35 @@ class VM {
                     val handlers = (registry.fields["__handlers"] as? Value.InternalList)!!
                     handlers.items.add(Value.EventHandler(Value.String(eventName), handlerFunc, Value.String(""), emptyList()))
                 }
+                OpCode.REGISTER_MOB -> {
+                    // Get the registerMob index from dst register (set by LOAD_IMM)
+                    val registerMobIndex = frame.regs[dst] as? Value.Int
+                        ?: error("REGISTER_MOB requires an integer index")
+                    val registerMob = frame.chunk.registerMobs[registerMobIndex.value]
+                        ?: error("Invalid register mob index: ${registerMobIndex.value}")
+
+                    // Resolve handler functions from chunk.functions
+                    val resolvedHandlers = mutableMapOf<String, Value.Function>()
+                    for ((eventName, funcIdx) in registerMob.eventHandlers) {
+                        val handlerChunk = frame.chunk.functions.getOrNull(funcIdx)
+                            ?: error("Handler function index $funcIdx not found for event $eventName")
+                        resolvedHandlers[eventName] = Value.Function(handlerChunk)
+                    }
+
+                    // Create MobDefinition
+                    val mobDef = Value.MobDefinition(
+                        name = registerMob.mobName,
+                        equipment = registerMob.equipment.toMap(),
+                        drops = registerMob.drops.map { Value.MobDropEntry(it.first, it.second, it.third) },
+                        experience = registerMob.experience,
+                        eventHandlers = resolvedHandlers
+                    )
+
+                    // Store in mob registry
+                    val registry = globals["__mobRegistry"] as? Value.Instance
+                        ?: error("No mob registry")
+                    registry.fields[registerMob.mobName] = mobDef
+                }
             }
         }
     }

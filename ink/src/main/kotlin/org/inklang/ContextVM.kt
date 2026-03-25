@@ -101,7 +101,13 @@ class ContextVM(
                     Value.Null
                 }
             )
-        ))
+        )),
+
+        // Mob registry for ink.mobs library
+        "__mobRegistry" to Value.Instance(
+            ClassDescriptor("MobRegistry", null, mapOf()),
+            mutableMapOf("__handlers" to Value.InternalList(mutableListOf()))
+        )
     )
 
     /**
@@ -111,6 +117,12 @@ class ContextVM(
     fun setGlobals(overrides: Map<String, Value>) {
         globals.putAll(overrides)
     }
+
+    /**
+     * Get the VM's globals map.
+     * Use this to inspect registered handlers after execution.
+     */
+    fun getGlobalsSnapshot(): Map<String, Value> = globals.toMap()
 
     data class CallFrame(
         val chunk: Chunk,
@@ -492,6 +504,10 @@ class ContextVM(
                     }
                     OpCode.REGISTER_EVENT -> {
                         // Event handlers are registered at compile time via context.registerEventHandler()
+                        // At runtime this is a no-op
+                    }
+                    OpCode.REGISTER_MOB -> {
+                        // Mob registrations are handled at compile time
                         // At runtime this is a no-op
                     }
                 }
@@ -881,6 +897,9 @@ class ContextVM(
                     }
                     OpCode.REGISTER_EVENT -> {
                         // Event handlers are registered at compile time - no-op at runtime
+                    }
+                    OpCode.REGISTER_MOB -> {
+                        // Mob definitions are registered at compile time - no-op at runtime
                     }
                 }
             } catch (e: ScriptException) {

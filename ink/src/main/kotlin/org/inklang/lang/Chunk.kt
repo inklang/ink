@@ -27,6 +27,8 @@ class Chunk {
     val classes = mutableListOf<ClassInfo>()
     val functionDefaults = mutableListOf<FunctionDefaults>()  // Parallel to functions - defaults for each function
     var spillSlotCount: Int = 0
+    // Mob registrations - populated during compilation for ink.mobs library
+    val registerMobs = mutableListOf<IrInstr.RegisterMob>()
 
     fun addConstant(value: Value): Int {
         constants.add(value)

@@ -41,6 +41,10 @@ enum class TokenType {
     KW_ENABLE,    // enable keyword
     KW_DISABLE,   // disable keyword
     KW_EVENT,
+    KW_MOB,       // mob keyword
+    KW_EQUIPMENT, // equipment keyword
+    KW_DROPS,     // drops keyword
+    KW_SKILLS,    // skills keyword
     IDENTIFIER,
     PLUS,
     MINUS,

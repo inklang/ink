@@ -238,6 +238,7 @@ class SsaBuilder(
         is IrInstr.Throw -> null
         is IrInstr.RegisterEventHandler -> null
         is IrInstr.InvokeEventHandler -> null
+        is IrInstr.RegisterMob -> null
     }
 
     /**

@@ -53,6 +53,14 @@ sealed class IrInstr {
         val eventObjectReg: Int,
         val dataArgRegs: List<Int>
     ) : IrInstr()
+    // Register a mob definition with the runtime mob registry
+    data class RegisterMob(
+        val mobName: String,
+        val equipment: List<Pair<String, String>>,  // slot -> item
+        val drops: List<Triple<String, Int?, Int?>>,  // item, chance, amount
+        val experience: Int?,
+        val eventHandlers: Map<String, Int>  // eventName -> funcIndex
+    ) : IrInstr()
 }
 
 data class MethodInfo(

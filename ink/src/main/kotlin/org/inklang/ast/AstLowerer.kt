@@ -224,6 +224,7 @@ open class AstLowerer {
         }
         is Stmt.EnableStmt -> lowerBlock(stmt.block)
         is Stmt.DisableStmt -> lowerBlock(stmt.block)
+        is Stmt.MobStmt -> lowerMob(stmt)
     }
 
     private fun lowerVar(stmt: Stmt.VarStmt) {
@@ -457,6 +458,33 @@ open class AstLowerer {
         locals[className] = dst
         emit(IrInstr.LoadClass(dst, className, stmt.superClass?.lexeme, methods))
         emit(IrInstr.StoreGlobal(className, dst))
+    }
+
+    private fun lowerMob(stmt: Stmt.MobStmt) {
+        val eventHandlers = mutableMapOf<String, Int>()
+
+        for (skill in stmt.skills) {
+            val lowerer = AstLowerer()
+            lowerer.regCounter = 0
+            val result = lowerer.lower(skill.body.stmts)
+            val funcIndex = functions.size
+            functions.add(result.instrs)
+            constants.addAll(result.constants)
+            eventHandlers[skill.eventName] = funcIndex
+        }
+
+        val equipment = stmt.equipment.map { it.slot to it.item.lexeme }
+        val drops = stmt.drops.map {
+            Triple(it.item.lexeme, it.chance?.lexeme?.toIntOrNull(), it.amount?.lexeme?.toIntOrNull())
+        }
+
+        emit(IrInstr.RegisterMob(
+            mobName = stmt.name.lexeme,
+            equipment = equipment,
+            drops = drops,
+            experience = stmt.experience,
+            eventHandlers = eventHandlers
+        ))
     }
 
     private fun lowerExpr(expr: Expr, dst: Int): Int = when (expr) {

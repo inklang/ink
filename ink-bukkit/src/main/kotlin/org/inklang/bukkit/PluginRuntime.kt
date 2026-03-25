@@ -4,6 +4,8 @@ import org.inklang.InkCompiler
 import org.inklang.InkScript
 import org.inklang.ContextVM
 import org.inklang.lang.Value
+import org.inklang.bukkit.handlers.MobHandler
+import org.inklang.bukkit.handlers.MobListener
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -17,6 +19,8 @@ class PluginRuntime(
 ) {
     private val compiler = InkCompiler()
     private val loadedPlugins = ConcurrentHashMap<String, LoadedPlugin>()
+    private val mobListeners = ConcurrentHashMap<String, MobListener>()
+    private val mobHandlers = ConcurrentHashMap<String, MobHandler>()
 
     data class LoadedPlugin(
         val name: String,
@@ -95,6 +99,15 @@ class PluginRuntime(
             // Execute enable block in the persistent VM
             vm.execute(enableScript.getChunk())
 
+            // Extract mob registrations from VM globals and create MobHandler
+            val mobHandler = extractMobHandler(vm, pluginName)
+            mobHandlers[pluginName] = mobHandler
+
+            // Create and register MobListener for this plugin
+            val mobListener = MobListener(this, mobHandler, pluginName)
+            mobListeners[pluginName] = mobListener
+            plugin.server.pluginManager.registerEvents(mobListener, plugin)
+
             val loaded = LoadedPlugin(
                 name = pluginName,
                 script = script,
@@ -154,6 +167,90 @@ class PluginRuntime(
     }
 
     fun getLoadedPlugins(): Map<String, LoadedPlugin> = loadedPlugins.toMap()
+
+    /**
+     * Get the MobHandler for a plugin by name.
+     */
+    fun getMobHandler(pluginName: String): MobHandler? = mobHandlers[pluginName]
+
+    /**
+     * Get the ContextVM for a plugin by name.
+     */
+    fun getVM(pluginName: String): ContextVM? = loadedPlugins[pluginName]?.vm
+
+    /**
+     * Get the context for a plugin.
+     */
+    fun getContext(pluginName: String): org.inklang.InkContext? = loadedPlugins[pluginName]?.context
+
+    /**
+     * Execute a mob handler function with given globals.
+     * Creates a new temporary VM for handler execution.
+     */
+    fun executeMobHandler(pluginName: String, handlerFunc: Value.Function, extraGlobals: Map<String, Value>): Value? {
+        val context = object : org.inklang.InkContext {
+            private var _vm: org.inklang.ContextVM? = null
+            override fun setVM(vm: org.inklang.ContextVM) { _vm = vm }
+            override fun log(message: String) { plugin.logger.info("[Ink/$pluginName] $message") }
+            override fun print(message: String) { /* handlers don't print */ }
+            override fun io(): org.inklang.InkIo = loadedPlugins[pluginName]?.context?.io()
+                ?: throw IllegalStateException("No context for plugin $pluginName")
+            override fun json(): org.inklang.InkJson = loadedPlugins[pluginName]?.context?.json()
+                ?: throw IllegalStateException("No context for plugin $pluginName")
+            override fun db(): org.inklang.InkDb = loadedPlugins[pluginName]?.context?.db()
+                ?: throw IllegalStateException("No context for plugin $pluginName")
+            override fun registerEventHandler(eventName: String, handlerFunc: Value.Function, eventParamName: String, dataParamNames: List<String>) {}
+            override fun fireEvent(eventName: String, event: Value.EventObject, data: List<Value?>): Boolean = false
+            override fun onEnable(script: InkScript) { /* not used for handlers */ }
+            override fun onDisable(script: InkScript) { /* not used for handlers */ }
+            override fun supportsLifecycle(): Boolean = true
+        }
+
+        // Create a temporary VM for handler execution
+        val handlerVm = org.inklang.ContextVM(context)
+
+        // Get the plugin's VM globals and merge with extra globals
+        val pluginVm = loadedPlugins[pluginName]?.vm
+        if (pluginVm != null) {
+            handlerVm.setGlobals(pluginVm.getGlobalsSnapshot())
+        }
+        handlerVm.setGlobals(extraGlobals)
+
+        // Execute the handler function
+        try {
+            handlerVm.execute(handlerFunc.chunk)
+            return null  // Handlers don't return values
+        } catch (e: Exception) {
+            plugin.logger.severe("Error executing mob handler: ${e.message}")
+            return Value.Null
+        }
+    }
+
+    /**
+     * Extract MobHandler from VM's __mobRegistry global.
+     */
+    private fun extractMobHandler(vm: ContextVM, pluginName: String): MobHandler {
+        val handler = MobHandler()
+        val globals = vm.getGlobalsSnapshot()
+        val mobRegistry = globals["__mobRegistry"] as? Value.Instance
+            ?: return handler
+
+        for ((mobName, mobValue) in mobRegistry.fields) {
+            if (mobName.startsWith("__")) continue  // Skip internal fields
+
+            val mobDef = mobValue as? Value.MobDefinition ?: continue
+
+            // Convert Value.MobDefinition to MobHandler.MobDefinition
+            val drops = mobDef.drops.map {
+                MobHandler.DropEntry(it.item, it.chance, it.amount)
+            }
+            val equipment = mobDef.equipment
+
+            handler.handle(mobDef.name, equipment, drops, mobDef.experience, mobDef.eventHandlers)
+        }
+
+        return handler
+    }
 }
 
 class PluginDisabledException(message: String) : RuntimeException(message)

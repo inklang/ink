@@ -237,6 +237,14 @@ class IrCompiler {
                 is IrInstr.Throw -> chunk.write(OpCode.THROW, src1 = instr.src)
                 is IrInstr.RegisterEventHandler -> { /* registered at runtime, no bytecode */ }
                 is IrInstr.InvokeEventHandler -> { /* invoked at runtime, no bytecode */ }
+                is IrInstr.RegisterMob -> {
+                    // Store RegisterMob in chunk.registerMobs and emit bytecode to pass its index
+                    val registerMobIndex = chunk.registerMobs.size
+                    chunk.registerMobs.add(instr)
+                    // Emit bytecode: LOAD_IMM r0, <registerMobIndex> then REGISTER_MOB
+                    chunk.write(OpCode.LOAD_IMM, dst = 0, imm = registerMobIndex)
+                    chunk.write(OpCode.REGISTER_MOB)
+                }
             }
         }
 

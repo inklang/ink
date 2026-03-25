@@ -109,6 +109,21 @@ sealed class Value {
         val name: kotlin.String,
         val params: List<Pair<kotlin.String, kotlin.String>>  // param name to type
     ) : Value()
+
+    /** Mob definition stored at runtime */
+    data class MobDefinition(
+        val name: kotlin.String,
+        val equipment: Map<kotlin.String, kotlin.String>,  // slot -> item
+        val drops: List<MobDropEntry>,
+        val experience: kotlin.Int?,
+        val eventHandlers: Map<kotlin.String, Value.Function>  // eventName -> handler function
+    ) : Value()
+
+    data class MobDropEntry(
+        val item: kotlin.String,
+        val chance: kotlin.Int?,
+        val amount: kotlin.Int?
+    ) : Value()
 }
 
 // === String method helpers ===

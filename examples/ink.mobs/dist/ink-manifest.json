@@ -1,0 +1,11 @@
+{
+  "name": "ink.mobs",
+  "version": "0.1.0",
+  "grammar": "grammar.ir.json",
+  "scripts": [
+    "boss.inkc",
+    "creeper.inkc",
+    "main.inkc",
+    "zombie.inkc"
+  ]
+}

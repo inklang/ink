@@ -60,7 +60,11 @@ private class Lexer(val source: String) {
             "on" to TokenType.KW_ON,
             "event" to TokenType.KW_EVENT,
             "enable" to TokenType.KW_ENABLE,
-            "disable" to TokenType.KW_DISABLE
+            "disable" to TokenType.KW_DISABLE,
+            "mob" to TokenType.KW_MOB,
+            "equipment" to TokenType.KW_EQUIPMENT,
+            "drops" to TokenType.KW_DROPS,
+            "skills" to TokenType.KW_SKILLS
         )
     }
 

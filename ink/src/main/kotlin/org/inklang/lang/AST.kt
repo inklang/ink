@@ -179,4 +179,16 @@ sealed class Stmt {
     data class EnableStmt(val block: BlockStmt) : Stmt()
     data class DisableStmt(val block: BlockStmt) : Stmt()
 
+    // Mob declaration: mob Zombie { on_spawn { ... }, equipment { ... }, drops { ... }, experience: 5, skills { ... } }
+    data class MobEquipmentSlot(val slot: String, val item: Token)  // head: DIAMOND_HELMET
+    data class MobDropEntry(val item: Token, val chance: Token?, val amount: Token?)  // ROTTEN_FLESH 50
+    data class MobSkillEvent(val eventName: String, val threshold: Pair<String, Int>?, val body: Stmt.BlockStmt)
+    data class MobStmt(
+        val name: Token,
+        val equipment: List<MobEquipmentSlot>,
+        val drops: List<MobDropEntry>,
+        val experience: Int?,
+        val skills: List<MobSkillEvent>
+    ) : Stmt()
+
 }

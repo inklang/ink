@@ -194,6 +194,105 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.DisableStmt(Stmt.BlockStmt(statements))
     }
 
+    private fun parseMob(): Stmt {
+        consume(TokenType.KW_MOB, "Expected 'mob'")
+        val name = consume(TokenType.IDENTIFIER, "Expected mob name")
+        consume(TokenType.L_BRACE, "Expected '{'")
+
+        val equipment = mutableListOf<Stmt.MobEquipmentSlot>()
+        val drops = mutableListOf<Stmt.MobDropEntry>()
+        var experience: Int? = null
+        val skills = mutableListOf<Stmt.MobSkillEvent>()
+
+        while (!check(TokenType.R_BRACE) && !isAtEnd()) {
+            when {
+                check(TokenType.KW_EQUIPMENT) -> {
+                    advance()
+                    consume(TokenType.L_BRACE, "Expected '{' after 'equipment'")
+                    while (!check(TokenType.R_BRACE) && !isAtEnd()) {
+                        val slot = consume(TokenType.IDENTIFIER, "Expected slot name (head, main, off, boots, legs, chest)")
+                        consume(TokenType.COLON, "Expected ':' after slot name")
+                        val item = consume(TokenType.IDENTIFIER, "Expected item name")
+                        equipment.add(Stmt.MobEquipmentSlot(slot.lexeme, item))
+                        if (check(TokenType.COMMA)) advance()
+                    }
+                    consume(TokenType.R_BRACE, "Expected '}' after equipment block")
+                }
+                check(TokenType.KW_DROPS) -> {
+                    advance()
+                    consume(TokenType.L_BRACE, "Expected '{' after 'drops'")
+                    while (!check(TokenType.R_BRACE) && !isAtEnd()) {
+                        val item = consume(TokenType.IDENTIFIER, "Expected item name")
+                        var chance: Token? = null
+                        var amount: Token? = null
+                        if (check(TokenType.KW_INT)) {
+                            chance = advance()
+                            if (check(TokenType.KW_INT)) {
+                                amount = advance()
+                            }
+                        }
+                        drops.add(Stmt.MobDropEntry(item, chance, amount))
+                        if (check(TokenType.COMMA)) advance()
+                    }
+                    consume(TokenType.R_BRACE, "Expected '}' after drops block")
+                }
+                check(TokenType.KW_SKILLS) -> {
+                    advance()
+                    consume(TokenType.L_BRACE, "Expected '{' after 'skills'")
+                    while (!check(TokenType.R_BRACE) && !isAtEnd()) {
+                        // Parse skill event: on_damage gt 50 { ... }
+                        consume(TokenType.KW_ON, "Expected 'on_' event handler")
+                        val eventName = consume(TokenType.IDENTIFIER, "Expected event name (on_spawn, on_death, on_damage, on_target)")
+                        val eventNameStr = eventName.lexeme
+
+                        // Optional threshold: gt 50, lt 25, eq 100
+                        var threshold: Pair<String, Int>? = null
+                        if (check(TokenType.GT) || check(TokenType.LT) || check(TokenType.EQ_EQ)) {
+                            val cmp = advance()
+                            val cmpStr = when (cmp.type) {
+                                TokenType.GT -> "gt"
+                                TokenType.LT -> "lt"
+                                TokenType.EQ_EQ -> "eq"
+                                else -> ""
+                            }
+                            val value = consume(TokenType.KW_INT, "Expected threshold value")
+                            val intValue: Int = value.lexeme.toIntOrNull() ?: 0
+                            threshold = cmpStr to intValue
+                        }
+
+                        val body = parseBlock()
+                        skills.add(Stmt.MobSkillEvent(eventNameStr, threshold, body))
+                    }
+                    consume(TokenType.R_BRACE, "Expected '}' after skills block")
+                }
+                checkKeyword("experience") -> {
+                    advance()
+                    consume(TokenType.COLON, "Expected ':' after 'experience'")
+                    val expValue = consume(TokenType.KW_INT, "Expected experience value")
+                    experience = expValue.lexeme.toIntOrNull()
+                }
+                else -> {
+                    // Try to parse as skill event: on_spawn { ... }
+                    if (check(TokenType.KW_ON)) {
+                        advance()
+                        val eventName = consume(TokenType.IDENTIFIER, "Expected event name")
+                        val body = parseBlock()
+                        skills.add(Stmt.MobSkillEvent(eventName.lexeme, null, body))
+                    } else {
+                        // Skip unknown tokens until we find something we recognize
+                        advance()
+                    }
+                }
+            }
+        }
+        consume(TokenType.R_BRACE, "Expected '}'")
+        return Stmt.MobStmt(name, equipment, drops, experience, skills)
+    }
+
+    private fun checkKeyword(name: String): Boolean {
+        return peek().type == TokenType.IDENTIFIER && peek().lexeme == name
+    }
+
     private fun parseStmt(): Stmt {
         // Check for annotations first - they may appear before any statement keyword
         val leadingAnnotations = if (check(TokenType.AT)) parseAnnotations() else emptyList()
@@ -223,6 +322,7 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KW_ON) -> parseOnHandler()
             check(TokenType.KW_ENABLE) -> parseEnable()
             check(TokenType.KW_DISABLE) -> parseDisable()
+            check(TokenType.KW_MOB) -> parseMob()
             else -> {
                 val expr = parseExpression(0)
                 if (check(TokenType.SEMICOLON)) advance()

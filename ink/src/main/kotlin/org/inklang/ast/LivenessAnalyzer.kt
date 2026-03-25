@@ -112,6 +112,7 @@ class LivenessAnalyzer {
                 is IrInstr.Throw -> use(instr.src, idx)
                 is IrInstr.RegisterEventHandler -> { /* no register effects */ }
                 is IrInstr.InvokeEventHandler -> { /* no register effects */ }
+                is IrInstr.RegisterMob -> { /* no register effects */ }
             }
         }
 

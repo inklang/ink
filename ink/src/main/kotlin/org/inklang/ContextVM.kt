@@ -162,7 +162,7 @@ class ContextVM(
             }
 
             val word = frame.chunk.code[frame.ip++]
-            val opcode = OpCode.entries.find { it.code == (word and 0xFF).toByte() }
+            val opcode = OpCode.fromByte((word and 0xFF).toByte())
                 ?: throw ScriptException("Unknown opcode: ${word and 0xFF}")
             val dst = (word shr 8) and 0x0F
             val src1 = (word shr 12) and 0x0F
@@ -222,7 +222,7 @@ class ContextVM(
                         when (val func = frame.regs[src1]) {
                             is Value.Function -> {
                                 val totalParams = func.defaults?.defaultChunks?.size ?: passedArgCount
-                                val finalArgs = fillDefaultArgs(args, func, totalParams, frame, frames)
+                                val finalArgs = fillDefaultArgs(args, func, totalParams, frame)
                                 val newFrame = CallFrame(func.chunk)
                                 newFrame.returnDst = dst
                                 finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
@@ -236,7 +236,7 @@ class ContextVM(
                                 when (val method = func.method) {
                                     is Value.Function -> {
                                         val totalParams = method.defaults?.defaultChunks?.size ?: boundArgs.size
-                                        val finalArgs = fillDefaultArgs(boundArgs, method, totalParams, frame, frames)
+                                        val finalArgs = fillDefaultArgs(boundArgs, method, totalParams, frame)
                                         val newFrame = CallFrame(method.chunk)
                                         newFrame.returnDst = dst
                                         finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
@@ -257,7 +257,7 @@ class ContextVM(
                                     when (initMethod) {
                                         is Value.Function -> {
                                             val totalParams = initMethod.defaults?.defaultChunks?.size ?: boundArgs.size
-                                            val finalArgs = fillDefaultArgs(boundArgs, initMethod, totalParams, frame, frames)
+                                            val finalArgs = fillDefaultArgs(boundArgs, initMethod, totalParams, frame)
                                             val newFrame = CallFrame(initMethod.chunk)
                                             newFrame.returnDst = dst
                                             finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
@@ -540,7 +540,7 @@ class ContextVM(
                                         continue
                                     }
                                     val aword = af.chunk.code[af.ip++]
-                                    val aopcode = OpCode.entries.find { it.code == (aword and 0xFF).toByte() }
+                                    val aopcode = OpCode.fromByte((aword and 0xFF).toByte())
                                         ?: throw RuntimeException("Unknown opcode in async: ${aword and 0xFF}")
                                     executeAsyncInstr(af, aopcode, aword, asyncFrames, globals)
                                 }
@@ -585,7 +585,7 @@ class ContextVM(
                                         continue
                                     }
                                     val sword = sf.chunk.code[sf.ip++]
-                                    val sopcode = OpCode.entries.find { it.code == (sword and 0xFF).toByte() }
+                                    val sopcode = OpCode.fromByte((sword and 0xFF).toByte())
                                         ?: throw RuntimeException("Unknown opcode in spawn: ${sword and 0xFF}")
                                     executeAsyncInstr(sf, sopcode, sword, spawnFrames, globals)
                                 }
@@ -617,7 +617,7 @@ class ContextVM(
                                         continue
                                     }
                                     val sword = sf.chunk.code[sf.ip++]
-                                    val sopcode = OpCode.entries.find { it.code == (sword and 0xFF).toByte() }
+                                    val sopcode = OpCode.fromByte((sword and 0xFF).toByte())
                                         ?: throw RuntimeException("Unknown opcode in spawn: ${sword and 0xFF}")
                                     executeAsyncInstr(sf, sopcode, sword, spawnFrames, globals)
                                 }
@@ -670,7 +670,7 @@ class ContextVM(
             }
 
             val word = currentFrame.chunk.code[currentFrame.ip++]
-            val opcode = OpCode.entries.find { it.code == (word and 0xFF).toByte() }
+            val opcode = OpCode.fromByte((word and 0xFF).toByte())
                 ?: throw ScriptException("Unknown opcode: ${word and 0xFF}")
             val dst = (word shr 8) and 0x0F
             val src1 = (word shr 12) and 0x0F
@@ -730,7 +730,7 @@ class ContextVM(
                         when (val funcVal = currentFrame.regs[src1]) {
                             is Value.Function -> {
                                 val totalParams = funcVal.defaults?.defaultChunks?.size ?: passedArgCount
-                                val finalArgs = fillDefaultArgs(callArgs, funcVal, totalParams, currentFrame, frames)
+                                val finalArgs = fillDefaultArgs(callArgs, funcVal, totalParams, currentFrame)
                                 val newFrame = CallFrame(funcVal.chunk)
                                 newFrame.returnDst = dst
                                 finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
@@ -744,7 +744,7 @@ class ContextVM(
                                 when (val method = funcVal.method) {
                                     is Value.Function -> {
                                         val totalParams = method.defaults?.defaultChunks?.size ?: boundArgs.size
-                                        val finalArgs = fillDefaultArgs(boundArgs, method, totalParams, currentFrame, frames)
+                                        val finalArgs = fillDefaultArgs(boundArgs, method, totalParams, currentFrame)
                                         val newFrame = CallFrame(method.chunk)
                                         newFrame.returnDst = dst
                                         finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
@@ -765,7 +765,7 @@ class ContextVM(
                                     when (initMethod) {
                                         is Value.Function -> {
                                             val totalParams = initMethod.defaults?.defaultChunks?.size ?: boundArgs.size
-                                            val finalArgs = fillDefaultArgs(boundArgs, initMethod, totalParams, currentFrame, frames)
+                                            val finalArgs = fillDefaultArgs(boundArgs, initMethod, totalParams, currentFrame)
                                             val newFrame = CallFrame(initMethod.chunk)
                                             newFrame.returnDst = dst
                                             finalArgs.forEachIndexed { i, v -> newFrame.regs[i] = v }
@@ -1248,8 +1248,7 @@ class ContextVM(
         args: List<Value>,
         func: Value.Function,
         totalParams: Int,
-        callerFrame: CallFrame,
-        frames: ArrayDeque<CallFrame>
+        callerFrame: CallFrame
     ): List<Value> {
         val defaults = func.defaults
 
@@ -1271,7 +1270,7 @@ class ContextVM(
             if (defaultChunkIdx != null) {
                 val defaultChunk = callerFrame.chunk.functions[defaultChunkIdx]
                 val defaultFrame = CallFrame(defaultChunk)
-                executeDefaultChunk(defaultFrame, frames)
+                executeDefaultChunk(defaultFrame)
                 val defaultValue = defaultFrame.regs[0] ?: Value.Null
                 finalArgs.add(defaultValue)
             } else {
@@ -1282,7 +1281,7 @@ class ContextVM(
         return finalArgs
     }
 
-    private fun executeDefaultChunk(frame: CallFrame, frames: ArrayDeque<CallFrame>) {
+    private fun executeDefaultChunk(frame: CallFrame) {
         while (frame.ip < frame.chunk.code.size) {
             // Count instructions in default chunks too
             if (maxInstructions > 0) {
@@ -1293,7 +1292,7 @@ class ContextVM(
             }
 
             val word = frame.chunk.code[frame.ip++]
-            val opcode = OpCode.entries.find { it.code == (word and 0xFF).toByte() }
+            val opcode = OpCode.fromByte((word and 0xFF).toByte())
                 ?: throw ScriptException("Unknown opcode in default value: ${word and 0xFF}")
             val dst = (word shr 8) and 0x0F
             val src1 = (word shr 12) and 0x0F

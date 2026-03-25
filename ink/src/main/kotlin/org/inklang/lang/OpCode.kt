@@ -63,4 +63,15 @@ enum class OpCode(val code: Byte) {
     SPAWN_VIRTUAL(0x2F), // spawn function on virtual thread pool
     GET_UPVALUE(0x30),   // dst = upvalue[imm] - load captured variable
     CALL_HANDLER(0x31),  // dispatch plugin handler with CST data
+    ;
+
+    companion object {
+        // O(1) lookup: OPCODE_LOOKUP[byte & 0xFF] = OpCode or null for invalid
+        private val OPCODE_LOOKUP: Array<OpCode?> = arrayOfNulls<OpCode>(0x100).apply {
+            entries.forEach { this[it.code.toInt() and 0xFF] = it }
+        }
+
+        /** O(1) opcode lookup from bytecode byte. Returns null for invalid opcodes. */
+        fun fromByte(b: Byte): OpCode? = OPCODE_LOOKUP[b.toInt() and 0xFF]
+    }
 }

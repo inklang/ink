@@ -186,8 +186,7 @@ fun getStringMethod(self: Value.String, name: String): Value? {
             if (idx >= 0 && idx < self.value.length) {
                 Value.String(self.value[idx].toString())
             } else {
-                // TODO: throw StringIndexOutOfBoundsError instead of returning null
-                Value.Null
+                throw IllegalArgumentException("String index out of bounds: $idx (length ${self.value.length})")
             }
         }
         else -> null

@@ -2,6 +2,7 @@ package org.inklang
 
 import org.inklang.lang.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.locks.ReentrantLock
 
@@ -35,7 +36,7 @@ class ContextVM(
 
     // Thread pools for async operations
     private val virtualThreadPool = ForkJoinPool.commonPool()
-    private val blockingThreadPool = ForkJoinPool.commonPool()
+    private val blockingThreadPool = Executors.newCachedThreadPool()
 
     val globals = mutableMapOf<String, Value>(
         "Array" to Value.Class(Builtins.ArrayClass),

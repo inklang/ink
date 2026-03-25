@@ -3,15 +3,25 @@ package org.inklang.bukkit.runtime
 import org.bukkit.command.CommandSender
 import org.bukkit.Server
 import org.inklang.lang.ClassRegistry
+import org.inklang.lang.EconomySkills
 import org.inklang.lang.Value
 
 object BukkitRuntimeRegistrar {
 
     fun register(sender: CommandSender, server: Server) {
-        ClassRegistry.registerGlobal("player", PlayerClass.createDescriptor(sender, server))
-        ClassRegistry.registerGlobal("server", ServerClass.createDescriptor(server))
+        org.inklang.lang.ClassRegistry.registerGlobal(
+            "player",
+            PlayerClass.createDescriptor(sender, server)
+        )
+        org.inklang.lang.ClassRegistry.registerGlobal(
+            "server",
+            ServerClass.createDescriptor(server)
+        )
         if (server.worlds.isNotEmpty()) {
-            ClassRegistry.registerGlobal("world", WorldClass.createDescriptor(server.worlds[0], server))
+            org.inklang.lang.ClassRegistry.registerGlobal(
+                "world",
+                WorldClass.createDescriptor(server.worlds[0], server)
+            )
         }
     }
 

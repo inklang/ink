@@ -1,4 +1,4 @@
-package org.inklang.bukkit
+package org.inklang.lang
 
 import java.sql.Connection
 import java.sql.DriverManager

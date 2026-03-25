@@ -42,8 +42,9 @@ export default defineGrammar({
         rule('equipment_slot', r => r.seq(
           choice([
             r.keyword('head'), r.keyword('main'), r.keyword('offhand'),
-            r.keyword('legs'), r.keyword('chest'), r.keyword('boots'),
-            r.keyword('helmet'), r.keyword('chestplate'), r.keyword('leggings')
+            r.keyword('legs'), r.keyword('chest'),
+            r.keyword('helmet'), r.keyword('chestplate'), r.keyword('leggings'),
+            r.keyword('boots')
           ]),
           colon(), expression()
         )),
@@ -96,7 +97,8 @@ export default defineGrammar({
 ```
 
 - [ ] **Step 2: Build grammar IR**
-  Run: `cd examples/ink.mobs && npm run build` (or the quill grammar build command — check `package.json`)
+
+The grammar IR is built by the Quill toolchain. Check how it works by looking at how `examples/ink.mobs/dist/grammar.ir.json` was previously generated. The `ink-package.toml` points `grammar.entry = "src/grammar.ts"` and `grammar.output = "dist/grammar.ir.json"`. Find the Quill CLI command that reads this config and compiles `src/grammar.ts` → `dist/grammar.ir.json`. Run that command.
   Expected: `dist/grammar.ir.json` updated with new rules
 
 - [ ] **Step 3: Commit**
@@ -112,8 +114,6 @@ export default defineGrammar({
 **Files:**
 - Modify: `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/MobHandler.kt`
 - Modify: `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/MobListener.kt`
-- Modify: `ink-bukkit/src/main/kotlin/org/inklang/bukkit/handlers/EntityClass.kt` (if needed for equipment)
-- Test: existing mob tests + manual testing in Paper server
 
 ### Task 2.1: Extend MobHandler to extract new CST fields
 
@@ -215,10 +215,29 @@ If threshold not met, skip skill execution.
 
 - [ ] **Step 5: Add new event listeners for additional events**
 
-Register listeners for:
-- `EntityExplodeEvent` → `on_explode`
-- `EntityEnterCombatEvent` → `on_enter_combat` (API 1.21+)
-- `EntityExitCombatEvent` → `on_leave_combat`
+Add imports for new event types:
+```kotlin
+import org.bukkit.event.entity.EntityExplodeEvent
+// EntityEnterCombatEvent and EntityExitCombatEvent are Paper 1.21+ API
+// Check if they exist in Paper API — if not, defer these two
+```
+
+Add `@EventHandler` methods on `MobListener`:
+```kotlin
+@EventHandler
+fun onEntityExplode(evt: EntityExplodeEvent) {
+    if (evt.entity.type != entityType) return
+    handlers["on_explode"]?.let { funcIdx ->
+        val healthPct = evt.entity.health / evt.entity.maxHealth
+        if (!checkThreshold("on_explode", healthPct)) return
+        safeCall(funcIdx, "on_explode", mapOf(
+            "entity" to EntityClass.wrap(evt.entity, server)
+        ))
+    }
+}
+```
+
+Note: `on_enter_combat` and `on_leave_combat` require Paper API 1.21+. If those event classes don't exist at compile time, remove them from the grammar and skip the corresponding handlers. Mark as deferred in the plan.
 
 - [ ] **Step 6: Run build to verify compilation**
   Run: `./gradlew :ink-bukkit:compileKotlin`
@@ -359,7 +378,7 @@ object MobSkills {
 }
 ```
 
-Note on `teleport` and `summon`: use `~` prefix to indicate relative offset. Parse `~0 ~1 ~0` as `entity.location + offset`.
+**Deferred — `~` relative offset parsing:** `~0 ~1 ~0` means "1 block up from entity location". Implement in a future iteration. For now, use absolute coordinates only.
 
 Note on `damage`: needs access to `target` from the skill context. The `entity` global is always available. `target` may be null.
 
@@ -375,7 +394,9 @@ MobSkills.ALL.forEach { (name, fn) ->
 
 - [ ] **Step 4: Register `if` as a built-in native function**
 
-The `if` skill needs special handling since it takes an Ink expression (condition) and two skill lists. In practice, `if` is compiled by Printing Press to normal control flow in the bytecode, so it may not need a native function at all — the compiler lowers it. Verify this assumption with a test ink script that uses `if`.
+**Deferred — `if` skill:** The `if` within skill blocks is compiled by Printing Press to normal Ink control flow (lowered to `JUMP_IF_FALSE`). No native function needed. If it doesn't work after implementation, debug as a Printing Press issue.
+
+**Deferred — `5s` duration shorthand:** MythicMobs uses `5s` (5 seconds). Inklang doesn't have this literal syntax. Durations in v1 use raw seconds as integers — the implementation multiplies by 20 to get ticks. Example: `speed_boost 1 5` (5 seconds, not `5s`).
 
 - [ ] **Step 5: Test the skills by running `./gradlew :ink-bukkit:test`**
 
@@ -439,7 +460,7 @@ mob Zombie {
     }
 
     on_damaged >50% {
-      speed_boost 1 5s
+      speed_boost 1 5
       message "§cThe zombie is wounded!"
     }
   }
@@ -508,12 +529,12 @@ mob Wither {
     }
 
     on_damaged >75% {
-      speed_boost 2 10s
+      speed_boost 2 10
       message "§cThe Wither is enraged! §7[Phase 1]"
     }
 
     on_damaged >50% {
-      speed_boost 3 15s
+      speed_boost 3 15
       message "§4The Wither is furious! §7[Phase 2]"
       particle_effect "lava" 20
     }
@@ -596,7 +617,7 @@ mob IronGolem {
     }
 
     on_damaged >30% {
-      speed_boost 1 5s
+      speed_boost 1 5
       message "§eThe golem defends its territory!"
     }
 
@@ -704,7 +725,7 @@ mob Pig {
 | `examples/ink.mobs/dist/ink-manifest.json` | Update |
 | `ink-bukkit/.../handlers/MobHandler.kt` | Extend — parse new CST fields |
 | `ink-bukkit/.../handlers/MobListener.kt` | Extend — equipment/drops/XP/thresholds |
-| `ink-bukkit/.../runtime/MobSkills.kt` | Create — skill implementations |
+| `ink-bukkit/src/main/kotlin/org/inklang/bukkit/runtime/MobSkills.kt` | Create — skill implementations |
 | `ink-bukkit/.../runtime/BukkitRuntimeRegistrar.kt` | Register MobSkills |
 
 ## Deferred / Future

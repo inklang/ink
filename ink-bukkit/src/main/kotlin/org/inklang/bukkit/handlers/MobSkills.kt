@@ -176,7 +176,7 @@ object MobSkills {
      */
     fun hasTag(entity: Value.Instance, tag: String): Value.Boolean {
         val tags = (entity.fields["tags"] as? Value.String)?.value?.split(",")?.filter { it.isNotBlank() } ?: return Value.Boolean.FALSE
-        return Value.Boolean.of(tags.contains(tag))
+        return if (tags.contains(tag)) Value.Boolean.TRUE else Value.Boolean.FALSE
     }
 
     /**

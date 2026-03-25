@@ -1131,8 +1131,10 @@ class ContextVM(
                     ?: throw ScriptException("Cannot await non-Task value")
                 try {
                     frame.regs[dst] = task.deferred.join()
+                } catch (e: java.util.concurrent.ExecutionException) {
+                    throw ScriptException("Async task failed: ${e.cause?.message ?: e.message}")
                 } catch (e: Throwable) {
-                    frame.regs[dst] = Value.String(e.message ?: "Unknown error")
+                    throw ScriptException("Async task failed: ${e.message}")
                 }
             }
             OpCode.NEW_ARRAY -> {

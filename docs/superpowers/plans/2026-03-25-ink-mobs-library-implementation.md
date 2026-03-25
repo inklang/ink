@@ -74,7 +74,7 @@ export default defineGrammar({
           r.seq(keyword('on_spawn'),      r.trigger_threshold().optional()),
           r.seq(keyword('on_death'),      r.trigger_threshold().optional()),
           r.seq(keyword('on_damage'),     r.trigger_threshold().optional()),
-          r.seq(keyword('on_damaged'),    r.trigger_threshold()),
+          r.seq(keyword('on_damaged'),    r.trigger_threshold().optional()),
           r.seq(keyword('on_explode'),    r.trigger_threshold().optional()),
           r.seq(keyword('on_target'),     r.trigger_threshold().optional()),
           r.seq(keyword('on_interact'),   r.trigger_threshold().optional()),
@@ -492,7 +492,7 @@ mob Creeper {
 
     on_explode {
       explosion 5
-      summon "firework_rocket" ~0 ~1 ~0
+      summon "firework_rocket" 0 1 0
     }
 
     on_death {
@@ -541,14 +541,14 @@ mob Wither {
 
     on_damaged >25% {
       explosion 4
-      summon "wither_skull" ~1 ~1 ~0
+      summon "wither_skull" 0 1 0
       message "§4§lFINAL PHASE — The Wither unleashes its fury!"
     }
 
     on_death {
       message "§a§lThe Wither has been defeated!"
       explosion 10
-      summon "firework_rocket" ~0 ~5 ~0
+      summon "firework_rocket" 0 5 0
       sound "entity.wither.death" 2.0
     }
   }
@@ -575,7 +575,7 @@ mob EnderDragon {
     }
 
     on_damaged >50% {
-      speed_boost 2 10s
+      speed_boost 2 10
       message "§dThe dragon takes flight!"
     }
 

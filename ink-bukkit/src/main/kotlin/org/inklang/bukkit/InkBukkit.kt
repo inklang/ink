@@ -5,7 +5,6 @@ import org.bukkit.command.CommandSender
 import org.bukkit.plugin.java.JavaPlugin
 import org.inklang.ContextVM
 import org.inklang.InkScript
-import org.inklang.InkCompiler
 import org.inklang.inkScriptFromJson
 import org.inklang.bukkit.runtime.BukkitRuntimeRegistrar
 import org.inklang.lang.ClassRegistry
@@ -13,7 +12,6 @@ import java.io.File
 
 class InkBukkit : JavaPlugin() {
 
-    private val compiler = InkCompiler()
     private val scriptCache = mutableMapOf<String, InkScript>()
     private lateinit var globalConfig: GlobalConfig
     private lateinit var pluginRuntime: PluginRuntime
@@ -49,26 +47,13 @@ class InkBukkit : JavaPlugin() {
             return
         }
 
-        val inkFiles  = pluginsDir.listFiles { f -> f.extension == "ink"  }?.toList()  ?: emptyList()
         val inkcFiles = pluginsDir.listFiles { f -> f.extension == "inkc" }?.toList() ?: emptyList()
 
-        // Build set of names that have a precompiled .inkc — these take priority
-        val compiledNames = inkcFiles.map { it.nameWithoutExtension }.toSet()
-
-        // Load precompiled plugins first
+        // Load precompiled plugins
         for (inkcFile in inkcFiles) {
             val result = pluginRuntime.loadCompiledPlugin(inkcFile)
             if (result.isFailure) {
                 logger.severe("Failed to load ${inkcFile.name}: ${result.exceptionOrNull()?.message}")
-            }
-        }
-
-        // Load source plugins that don't have a precompiled counterpart
-        for (inkFile in inkFiles) {
-            if (inkFile.nameWithoutExtension in compiledNames) continue
-            val result = pluginRuntime.loadPlugin(inkFile)
-            if (result.isFailure) {
-                logger.severe("Failed to load ${inkFile.name}: ${result.exceptionOrNull()?.message}")
             }
         }
     }
@@ -103,11 +88,11 @@ class InkBukkit : JavaPlugin() {
                     true
                 } else {
                     val pluginName = args[1]
-                    val pluginFile = File(File(dataFolder, "plugins"), "$pluginName.ink")
+                    val pluginFile = File(File(dataFolder, "plugins"), "$pluginName.inkc")
                     if (!pluginFile.exists()) {
-                        sender.sendMessage("§cPlugin not found: $pluginName.ink")
+                        sender.sendMessage("§cPlugin not found: $pluginName.inkc")
                     } else {
-                        val result = pluginRuntime.loadPlugin(pluginFile)
+                        val result = pluginRuntime.loadCompiledPlugin(pluginFile)
                         if (result.isSuccess) {
                             sender.sendMessage("§aPlugin loaded: $pluginName")
                         } else {
@@ -157,19 +142,14 @@ class InkBukkit : JavaPlugin() {
         try {
             val scriptsDir = File(dataFolder, "scripts")
             val inkcFile = File(scriptsDir, "$scriptName.inkc")
-            val inkFile  = File(scriptsDir, "$scriptName.ink")
 
-            val compiled = when {
-                inkcFile.exists() -> scriptCache.getOrPut(inkcFile.absolutePath) {
-                    inkScriptFromJson(inkcFile.readText())
-                }
-                inkFile.exists() -> scriptCache.getOrPut(inkFile.absolutePath) {
-                    compiler.compile(inkFile.readText(), scriptName)
-                }
-                else -> {
-                    sender.sendMessage("§cScript not found: $scriptName (.ink or .inkc)")
-                    return
-                }
+            if (!inkcFile.exists()) {
+                sender.sendMessage("§cScript not found: $scriptName.inkc")
+                return
+            }
+
+            val compiled = scriptCache.getOrPut(inkcFile.absolutePath) {
+                inkScriptFromJson(inkcFile.readText())
             }
 
             val scriptDir = File(File(dataFolder, "scripts"), scriptName)
@@ -216,12 +196,12 @@ class InkBukkit : JavaPlugin() {
     private fun reloadPlugin(sender: CommandSender, pluginName: String) {
         try {
             pluginRuntime.unloadPlugin(pluginName)
-            val pluginFile = File(File(dataFolder, "plugins"), "$pluginName.ink")
+            val pluginFile = File(File(dataFolder, "plugins"), "$pluginName.inkc")
             if (!pluginFile.exists()) {
-                sender.sendMessage("§cPlugin not found: $pluginName.ink")
+                sender.sendMessage("§cPlugin not found: $pluginName.inkc")
                 return
             }
-            val result = pluginRuntime.loadPlugin(pluginFile)
+            val result = pluginRuntime.loadCompiledPlugin(pluginFile)
             if (result.isSuccess) {
                 sender.sendMessage("§aPlugin reloaded: $pluginName")
             } else {

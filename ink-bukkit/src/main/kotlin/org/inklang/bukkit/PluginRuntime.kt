@@ -1,6 +1,5 @@
 package org.inklang.bukkit
 
-import org.inklang.InkCompiler
 import org.inklang.InkScript
 import org.inklang.ContextVM
 import org.inklang.inkScriptFromJson
@@ -8,8 +7,6 @@ import org.inklang.bukkit.handlers.CommandHandler
 import org.inklang.bukkit.handlers.MobHandler
 import org.inklang.bukkit.handlers.PlayerHandler
 import org.inklang.grammar.CstNode
-import org.inklang.grammar.PackageRegistry
-import org.inklang.grammar.PluginParserRegistry
 import org.inklang.lang.Chunk
 import org.inklang.lang.Value
 import java.io.File
@@ -26,18 +23,7 @@ class PluginRuntime(
     private val plugin: InkBukkit,
     private val globalConfig: GlobalConfig
 ) {
-    private val compiler = InkCompiler()
     private val loadedPlugins = ConcurrentHashMap<String, LoadedPlugin>()
-
-    private val pluginRegistry: PluginParserRegistry by lazy {
-        val registry = PackageRegistry()
-        // Load grammars from plugin JAR's classpath (e.g., ink/bukkit/dist/)
-        registry.loadFromClasspath(listOf("ink/bukkit/dist"))
-        // Also load grammars from disk (e.g., third-party plugin grammars)
-        registry.loadAll(File(plugin.dataFolder, "grammars"))
-        val merged = registry.merge()
-        PluginParserRegistry(merged)
-    }
 
     /** Built-in grammar keyword handlers, keyed by grammar declaration keyword. */
     private val keywordHandlers: Map<String, GrammarKeywordHandler> = mapOf(
@@ -55,37 +41,6 @@ class PluginRuntime(
         val folder: File,
         val vm: ContextVM
     )
-
-    /**
-     * Load and enable a plugin from its .ink source file (JIT compilation).
-     */
-    fun loadPlugin(pluginFile: File): Result<LoadedPlugin> {
-        val pluginName = pluginFile.nameWithoutExtension
-
-        if (globalConfig.isPluginDisabled(pluginName)) {
-            return Result.failure(PluginDisabledException("$pluginName is disabled in plugins.toml"))
-        }
-
-        return try {
-            val source = pluginFile.readText()
-
-            val parsedStatements = compiler.parse(source)
-            val validationResult = compiler.validatePluginScript(parsedStatements)
-            if (!validationResult.isValid()) {
-                return Result.failure(
-                    IllegalStateException(
-                        "Invalid plugin ${pluginFile.name}: ${validationResult.errors.joinToString("; ")}"
-                    )
-                )
-            }
-
-            val script = compiler.compile(source, pluginName)
-            enableScript(pluginName, script)
-        } catch (e: Exception) {
-            plugin.logger.severe("Failed to load Ink plugin $pluginName: ${e.message}")
-            Result.failure(e)
-        }
-    }
 
     /**
      * Load and enable a plugin from a precompiled .inkc file.

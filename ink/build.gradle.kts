@@ -1,15 +1,10 @@
 plugins {
     kotlin("jvm") version "2.2.21"
     kotlin("plugin.serialization") version "2.2.21"
-    application
 }
 
 group = "org.inklang"
 version = "1.0-SNAPSHOT"
-
-application {
-    mainClass.set("org.inklang.MainKt")
-}
 
 repositories {
     mavenCentral()

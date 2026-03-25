@@ -1,9 +1,0 @@
-fn test() {
-
-}
-
-let sum = 1;
-for i in 0..10 {
-  sum += i;
-}
-print(sum);

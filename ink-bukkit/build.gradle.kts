@@ -30,6 +30,10 @@ tasks {
         }
     }
 
+    processResources {
+        expand("version" to version)
+    }
+
     shadowJar {
         archiveFileName.set("inklang-bukkit-${version}.jar")
         relocate("org.inklang", "org.inklang.lib")
@@ -40,7 +44,39 @@ tasks {
     }
 
     runServer {
-        minecraftVersion("1.21.8")
+        minecraftVersion("1.21.11")
+    }
+
+    register("deployScripts") {
+        group = "ink"
+        description = "Compile example scripts and copy to run/plugins/Ink/plugins/"
+        dependsOn(":ink:jar")
+
+        doLast {
+            val inkJar = project(":ink").tasks.named("jar").get().outputs.files.singleFile
+            val pluginsDir = layout.projectDirectory.dir("run/plugins/Ink/plugins").asFile
+            pluginsDir.mkdirs()
+
+            fileTree("${rootProject.projectDir}/examples").matching {
+                include("*/ink-package.toml")
+            }.forEach { tomlFile ->
+                val packageDir = tomlFile.parentFile
+                val grammarIr = File(packageDir, "dist/grammar.ir.json")
+                val scriptsDir = File(packageDir, "scripts")
+                if (!scriptsDir.exists() || !grammarIr.exists()) return@forEach
+
+                exec {
+                    commandLine(
+                        "java", "-jar", inkJar.absolutePath,
+                        "compile",
+                        "--sources", scriptsDir.absolutePath,
+                        "--out", pluginsDir.absolutePath,
+                        "--grammar", grammarIr.absolutePath
+                    )
+                }
+                println("Deployed scripts from ${packageDir.name}")
+            }
+        }
     }
 }
 

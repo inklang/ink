@@ -1,5 +1,0 @@
-let numbers = [64, 34, 25, 12, 22, 11, 90];
-sort(numbers)
-print(numbers)
-
-reverse(sort(numbers))

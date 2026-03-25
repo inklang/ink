@@ -1,6 +1,6 @@
 # inklang
 
-ink is a compiled scripting language targeting a register-based bytecode VM.
+ink is a compiled scripting language targeting a register-based bytecode VM for PaperMC servers.
 
 ## Features
 
@@ -10,6 +10,10 @@ ink is a compiled scripting language targeting a register-based bytecode VM.
 - Classes and inheritance
 - Register-based bytecode VM with SSA optimizations
 - Extensible via the [quill](https://github.com/inklang/quill) package manager
+
+## Packages
+
+- [ink.economy](https://github.com/inklang/economy) — single-currency economy system with SQLite-backed accounts and `eco_*` built-in functions
 
 ## Building
 
@@ -26,4 +30,3 @@ ink is a compiled scripting language targeting a register-based bytecode VM.
 ## Documentation
 
 Full docs at [inklang.github.io/web](https://inklang.github.io/web).
-

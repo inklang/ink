@@ -627,9 +627,6 @@ class ContextVM(
                         }
                         frame.regs[dst] = Value.Null
                     }
-                    OpCode.GET_UPVALUE -> {
-                        frame.regs[dst] = frame.upvalues[imm] ?: throw ScriptException("Upvalue at index $imm is not set")
-                    }
                     OpCode.CALL_HANDLER -> {
                         val cst = frame.chunk.cstTable[imm]
                         if (cst is org.inklang.grammar.CstNode.Declaration) {
@@ -1191,7 +1188,6 @@ class ContextVM(
                     }
                 }
             }
-            OpCode.MOVE -> frame.regs[dst] = frame.regs[src1]
             OpCode.POP -> { /* no-op */ }
             else -> throw ScriptException("Unsupported opcode in async: $opcode")
         }
@@ -1366,5 +1362,13 @@ class ContextVM(
                 else -> throw ScriptException("Unsupported opcode in default value: $opcode")
             }
         }
+    }
+
+    /**
+     * Release resources held by this VM — currently just the blocking thread pool.
+     * Call this when a plugin is unloaded or the VM is discarded.
+     */
+    fun close() {
+        blockingThreadPool.shutdown()
     }
 }

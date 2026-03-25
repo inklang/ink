@@ -129,6 +129,8 @@ class PluginRuntime(
             loaded.disableScript?.let { loaded.vm.execute(it.getChunk()) }
         } catch (e: Exception) {
             plugin.logger.severe("Error during disable for $pluginName: ${e.message}")
+        } finally {
+            loaded.vm.close()
         }
         plugin.logger.info("Ink plugin unloaded: $pluginName")
     }

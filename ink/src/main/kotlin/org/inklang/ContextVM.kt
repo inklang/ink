@@ -43,6 +43,7 @@ class ContextVM(
         "Map" to Value.Class(Builtins.MapClass),
         "Set" to Value.Class(Builtins.SetClass),
         "Tuple" to Value.Class(Builtins.TupleClass),
+        "Deque" to Value.Class(Builtins.DequeClass),
         "EnumValue" to Value.Class(Builtins.EnumValueClass),
         "EnumNamespace" to Value.Class(Builtins.EnumNamespaceClass),
         "print" to Value.NativeFunction { args ->

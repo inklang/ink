@@ -1,6 +1,10 @@
 package org.inklang
 
 import org.inklang.lang.*
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ForkJoinPool
@@ -109,6 +113,115 @@ class ContextVM(
                     val keyIdx = (args.getOrNull(2) as? Value.Int)?.value ?: 0
                     context.db().registerTable(tableName, fieldNames, keyIdx)
                     Value.Null
+                },
+                "query" to Value.NativeFunction { args ->
+                    val sql = (args.getOrNull(0) as? Value.String)?.value
+                        ?: error("db.query requires a SQL string")
+                    val task = CompletableFuture<Value>()
+
+                    virtualThreadPool.submit {
+                        try {
+                            // Execute SQL query and convert result to Array of rows
+                            // For now, return an empty array as placeholder
+                            // TODO: Implement actual SQL query execution through InkDb
+                            val result = Builtins.newArray(mutableListOf())
+                            task.complete(result)
+                        } catch (e: Throwable) {
+                            task.completeExceptionally(e)
+                        }
+                    }
+
+                    Value.Task(task)
+                }
+            )
+        )),
+        "http" to Value.Instance(ClassDescriptor(
+            name = "HttpModule",
+            superClass = null,
+            methods = mapOf(
+                "get" to Value.NativeFunction { args ->
+                    val url = (args.getOrNull(0) as? Value.String)?.value
+                        ?: error("http.get requires a URL string")
+                    val task = CompletableFuture<Value>()
+
+                    virtualThreadPool.submit {
+                        try {
+                            val client = HttpClient.newHttpClient()
+                            val request = HttpRequest.newBuilder()
+                                .uri(URI.create(url))
+                                .GET()
+                                .build()
+                            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+                            task.complete(Value.String(response.body()))
+                        } catch (e: Throwable) {
+                            task.completeExceptionally(e)
+                        }
+                    }
+
+                    Value.Task(task)
+                },
+                "post" to Value.NativeFunction { args ->
+                    val url = (args.getOrNull(0) as? Value.String)?.value
+                        ?: error("http.post requires a URL string")
+                    val body = (args.getOrNull(1) as? Value.String)?.value
+                        ?: error("http.post requires a body string")
+                    val task = CompletableFuture<Value>()
+
+                    virtualThreadPool.submit {
+                        try {
+                            val client = HttpClient.newHttpClient()
+                            val request = HttpRequest.newBuilder()
+                                .uri(URI.create(url))
+                                .POST(HttpRequest.BodyPublishers.ofString(body))
+                                .build()
+                            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+                            task.complete(Value.String(response.body()))
+                        } catch (e: Throwable) {
+                            task.completeExceptionally(e)
+                        }
+                    }
+
+                    Value.Task(task)
+                }
+            )
+        )),
+        "file" to Value.Instance(ClassDescriptor(
+            name = "FileModule",
+            superClass = null,
+            methods = mapOf(
+                "read" to Value.NativeFunction { args ->
+                    val path = (args.getOrNull(0) as? Value.String)?.value
+                        ?: error("file.read requires a string path")
+                    val task = CompletableFuture<Value>()
+
+                    virtualThreadPool.submit {
+                        try {
+                            val content = context.io().read(path)
+                            task.complete(Value.String(content))
+                        } catch (e: Throwable) {
+                            task.completeExceptionally(e)
+                        }
+                    }
+
+                    Value.Task(task)
+                },
+                "write" to Value.NativeFunction { args ->
+                    val path = (args.getOrNull(0) as? Value.String)?.value
+                        ?: error("file.write requires a string path")
+                    val content = (args.getOrNull(1) as? Value.String)?.value
+                        ?: error("file.write requires a string content")
+                    val task = CompletableFuture<Value>()
+
+                    virtualThreadPool.submit {
+                        try {
+                            context.io().write(path, content)
+                            task.complete(Value.Null)
+                        } catch (e: Throwable) {
+                            task.completeExceptionally(e)
+                        }
+                    }
+
+                    Value.Task(task)
                 }
             )
         ))

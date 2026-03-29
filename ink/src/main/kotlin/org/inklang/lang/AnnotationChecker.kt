@@ -63,7 +63,7 @@ class AnnotationChecker {
                         is Value.Int -> Type.Int
                         is Value.Float -> Type.Float
                         is Value.Double -> Type.Double
-                        is Value.String -> Type.String
+                        is Value.String -> Type.Str
                         is Value.Boolean -> Type.Bool
                         is Value.Null -> Type.Null
                         else -> Type.Unknown

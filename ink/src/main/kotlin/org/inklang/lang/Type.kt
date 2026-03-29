@@ -18,7 +18,7 @@ sealed class Type {
     object Double : Type()
 
     /** String type */
-    object String : Type()
+    object Str : Type()
 
     /** Boolean type */
     object Bool : Type()
@@ -80,7 +80,7 @@ sealed class Type {
         is Int -> "int"
         is Float -> "float"
         is Double -> "double"
-        is String -> "string"
+        is Str -> "string"
         is Bool -> "bool"
         is Null -> "null"
         is Function -> "fn(${params.joinToString(", ") { it.toString() }}) -> $returnType"

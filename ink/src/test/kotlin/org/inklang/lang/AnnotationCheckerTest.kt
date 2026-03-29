@@ -104,7 +104,7 @@ class AnnotationCheckerTest {
         assertEquals(1, errors.size, "Should have exactly one error")
         assertTrue(errors[0] is TypeError.SpawnNonCallable)
         val error = errors[0] as TypeError.SpawnNonCallable
-        assertEquals(Type.String, error.actualType)
+        assertEquals(Type.Str, error.actualType)
         assertTrue(error.isVirtual)
         assertTrue(error.message.contains("spawn virtual"))
     }

@@ -1,0 +1,68 @@
+From 665e163e3d36781cb75b211fb17d9f87114ac218 Mon Sep 17 00:00:00 2001
+From: Skynet Agent <skynet@openclaw.ai>
+Date: Sun, 29 Mar 2026 08:58:08 -0700
+Subject: [PATCH] fix: rename Type.String to Type.Str to avoid kotlin.String
+ shadowing
+
+object String inside sealed class Type shadowed kotlin.String, causing:
+- toString() return type conflict with Any.toString()
+- joinToString expecting CharSequence but getting Type.String
+
+Rename to Str to avoid the naming collision.
+---
+ ink/src/main/kotlin/org/inklang/lang/AnnotationChecker.kt     | 2 +-
+ ink/src/main/kotlin/org/inklang/lang/Type.kt                  | 4 ++--
+ ink/src/test/kotlin/org/inklang/lang/AnnotationCheckerTest.kt | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/ink/src/main/kotlin/org/inklang/lang/AnnotationChecker.kt b/ink/src/main/kotlin/org/inklang/lang/AnnotationChecker.kt
+index b463ec8..4db8454 100644
+--- a/ink/src/main/kotlin/org/inklang/lang/AnnotationChecker.kt
++++ b/ink/src/main/kotlin/org/inklang/lang/AnnotationChecker.kt
+@@ -63,7 +63,7 @@ class AnnotationChecker {
+                         is Value.Int -> Type.Int
+                         is Value.Float -> Type.Float
+                         is Value.Double -> Type.Double
+-                        is Value.String -> Type.String
++                        is Value.String -> Type.Str
+                         is Value.Boolean -> Type.Bool
+                         is Value.Null -> Type.Null
+                         else -> Type.Unknown
+diff --git a/ink/src/main/kotlin/org/inklang/lang/Type.kt b/ink/src/main/kotlin/org/inklang/lang/Type.kt
+index 67fc348..bbd453d 100644
+--- a/ink/src/main/kotlin/org/inklang/lang/Type.kt
++++ b/ink/src/main/kotlin/org/inklang/lang/Type.kt
+@@ -18,7 +18,7 @@ sealed class Type {
+     object Double : Type()
+ 
+     /** String type */
+-    object String : Type()
++    object Str : Type()
+ 
+     /** Boolean type */
+     object Bool : Type()
+@@ -80,7 +80,7 @@ sealed class Type {
+         is Int -> "int"
+         is Float -> "float"
+         is Double -> "double"
+-        is String -> "string"
++        is Str -> "string"
+         is Bool -> "bool"
+         is Null -> "null"
+         is Function -> "fn(${params.joinToString(", ") { it.toString() }}) -> $returnType"
+diff --git a/ink/src/test/kotlin/org/inklang/lang/AnnotationCheckerTest.kt b/ink/src/test/kotlin/org/inklang/lang/AnnotationCheckerTest.kt
+index a135bea..1daa2f6 100644
+--- a/ink/src/test/kotlin/org/inklang/lang/AnnotationCheckerTest.kt
++++ b/ink/src/test/kotlin/org/inklang/lang/AnnotationCheckerTest.kt
+@@ -104,7 +104,7 @@ class AnnotationCheckerTest {
+         assertEquals(1, errors.size, "Should have exactly one error")
+         assertTrue(errors[0] is TypeError.SpawnNonCallable)
+         val error = errors[0] as TypeError.SpawnNonCallable
+-        assertEquals(Type.String, error.actualType)
++        assertEquals(Type.Str, error.actualType)
+         assertTrue(error.isVirtual)
+         assertTrue(error.message.contains("spawn virtual"))
+     }
+-- 
+2.43.0
+

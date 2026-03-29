@@ -286,7 +286,7 @@ class AnnotationChecker {
         }
 
         fun copyRegisterType(src: Int, dst: Int) {
-            registerTypes[dst] = registerTypes[src]
+            registerTypes[dst] = registerTypes[src] ?: Type.Unknown
         }
     }
 }
